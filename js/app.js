@@ -302,6 +302,12 @@
       <p class="klein">Gebruik de uitlijnbalk boven het canvas, of sleep ze samen.</p>
       <button id="btnVerwijderSel" class="gevaar">Selectie verwijderen</button>`;
   }
+  const STATUSSEN = ['Concept', 'Ter review', 'Voorlopig', 'Definitief', 'Gewijzigd'];
+  function statusOpties(huidig) {
+    const lijst = STATUSSEN.slice();
+    if (huidig && !lijst.includes(huidig)) lijst.push(huidig); // eigen status uit een ouder bestand blijft kiesbaar
+    return (huidig ? '' : '<option value="" selected>(geen)</option>') + lijst.map(s => `<option value="${NP.esc(s)}"${s === huidig ? ' selected' : ''}>${NP.esc(s)}</option>`).join('');
+  }
   function paneelProject() {
     const r = S.reken;
     return `<div class="paneelkop">Project</div>
@@ -310,9 +316,8 @@
       <label class="veld">Documentdatum<input data-project="docDatum" type="date" value="${NP.esc(S.p.docDatum)}"></label>
       <div class="twee">
         <label class="veld">Versie<input data-project="docVersie" type="text" value="${NP.esc(S.p.docVersie)}" placeholder="bijv. 1.0"></label>
-        <label class="veld">Status<input data-project="status" type="text" list="statusLijst" value="${NP.esc(S.p.status)}" placeholder="bijv. Concept"></label>
+        <label class="veld">Status<select data-project="status">${statusOpties(S.p.status)}</select></label>
       </div>
-      <datalist id="statusLijst"><option value="Concept"><option value="Ter review"><option value="Voorlopig"><option value="Definitief"><option value="Gewijzigd"></datalist>
       <label class="check"><input type="checkbox" id="chkPaginaRaster"${printInstellingen().raster ? ' checked' : ''}> Paginaraster op het canvas tonen</label>
       <p class="klein">${r.kringFout ? 'Rekenen gestopt: er zit een kring in het netwerk.' : `Projectduur: <strong>${NP.fmt(r.projectEinde)}</strong> ${NP.esc(S.p.eenheid || '')}`}</p>
       <p class="klein">Klik op een activiteit om haar te bewerken. Dubbelklik op een pijl om een relatie te bewerken.</p>`;

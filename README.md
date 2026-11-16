@@ -40,6 +40,10 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 
 ## Wijzigingen per versie
 
+### v0.41 (16-11-2026)
+- Status kies je nu uit een vaste keuzelijst (Concept, Ter review, Voorlopig, Definitief, Gewijzigd). Alle keuzes blijven altijd zichtbaar; je hoeft de oude status niet eerst weg te halen. Een eigen status uit een eerder bestand blijft in de lijst staan.
+
+
 ### v0.4 (16-11-2026)
 
 **Projectgegevens**
