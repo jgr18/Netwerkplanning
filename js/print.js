@@ -14,30 +14,37 @@
     return opts.richting === 'staand' ? { w: a, h: b } : { w: b, h: a };
   };
 
-  /* Zoek een naad (paginarand) tussen min en max die geen blok doorsnijdt. */
-  function zoekNaad(ideaal, min, overlap, intervallen, slim) {
-    if (!slim) return ideaal;
-    const raakt = x => intervallen.some(([a, b]) => x > a + 0.5 && x < b - 0.5);
-    for (let e = ideaal; e >= min; e -= 4) {
-      if (!raakt(e) && !raakt(e - overlap)) return e;
-    }
-    for (let e = ideaal; e >= min; e -= 4) if (!raakt(e)) return e;
-    return ideaal;
-  }
-
+  /* Verdeel een lengte gelijkmatig over zo weinig mogelijk pagina's; naden waar mogelijk in de witruimte. */
   function verdeel(start, lengte, pagina, overlap, intervallen, slim) {
-    const einde = start + lengte;
-    if (lengte <= pagina) {
+    if (lengte <= pagina + 0.5) {
       const s = start - (pagina - lengte) / 2;
       return [[s, s + pagina]];
     }
+    const n = Math.ceil((lengte - overlap) / (pagina - overlap) - 1e-9);
+    const deel = (lengte + (n - 1) * overlap) / n; // gelijke stukken, elk ≤ pagina
+    const raakt = x => intervallen.some(([a, b]) => x > a + 0.5 && x < b - 0.5);
     const delen = [];
     let s = start;
-    let veilig = 0;
-    while (veilig++ < 500) {
-      if (s + pagina >= einde) { delen.push([s, einde]); break; }
-      const min = s + Math.max(overlap + 20, pagina * 0.55);
-      const e = zoekNaad(s + pagina, min, overlap, intervallen, slim);
+    for (let i = 0; i < n; i++) {
+      if (i === n - 1) { delen.push([s, start + lengte]); break; }
+      const ideaal = s + deel;
+      let e = ideaal;
+      if (slim) {
+        const max = s + pagina, min = s + Math.max(overlap + 20, pagina * 0.5);
+        // ook de resterende pagina's moeten het nog redden
+        const nogTeGaan = n - i - 1;
+        const minRest = start + lengte - nogTeGaan * (pagina - overlap) - overlap;
+        const lo = Math.max(min, minRest);
+        let gevonden = null;
+        for (let d = 0; d <= pagina; d += 4) {
+          for (const kand of [ideaal + d, ideaal - d]) {
+            if (kand < lo || kand > max) continue;
+            if (!raakt(kand) && !raakt(kand - overlap)) { gevonden = kand; break; }
+          }
+          if (gevonden !== null || (ideaal + d > max && ideaal - d < lo)) break;
+        }
+        if (gevonden !== null) e = gevonden;
+      }
       delen.push([s, e]);
       s = e - overlap;
     }
@@ -54,13 +61,17 @@
     const pap = NP.papierMaat(opts);
     const aw = pap.w - 2 * MARGE;
     const ah = pap.h - 2 * MARGE - KOP_MM - (opts.legenda ? VOET_MM : 0);
+    const ovmm = Math.max(0, Number(opts.overlap) || 0);
     let k;
-    if (opts.schaal === 'een') k = Math.min(aw / bb.w, ah / bb.h);
-    else if (opts.schaal === 'vast') k = K_LEESBAAR * (Math.max(5, Number(opts.pct) || 100) / 100);
+    if (opts.schaal === 'paginas' || opts.schaal === 'een') {
+      const nx = opts.schaal === 'een' ? 1 : Math.max(1, Math.round(Number(opts.nx) || 1));
+      const ny = opts.schaal === 'een' ? 1 : Math.max(1, Math.round(Number(opts.ny) || 1));
+      k = Math.min((nx * aw - (nx - 1) * ovmm) / bb.w, (ny * ah - (ny - 1) * ovmm) / bb.h) * 0.999;
+    } else if (opts.schaal === 'vast') k = K_LEESBAAR * (Math.max(5, Number(opts.pct) || 100) / 100);
     else k = K_LEESBAAR;
     const naamPt = (NAAM_PX * k) / PT;
     const pw = aw / k, ph = ah / k;
-    const ov = Math.max(0, Number(opts.overlap) || 0) / k;
+    const ov = ovmm / k;
     const vl = p.activiteiten.map(NP.vlak);
     const xi = vl.map(v => [v.x, v.x + v.w]);
     const yi = vl.map(v => [v.y, v.y + v.h]);
@@ -81,8 +92,34 @@
       (n > 1 ? ` (${ind.rijen} rij${ind.rijen > 1 ? 'en' : ''} × ${ind.kolommen} kolom${ind.kolommen > 1 ? 'men' : ''})` : '') + extra +
       ` · namen ${NP.fmt(ind.naamPt)} pt`;
     let waarschuwing = false;
+    const pct = Math.round(ind.k / K_LEESBAAR * 100);
+    tekst += ` · schaal ${pct}%`;
+    if (n > 1) {
+      const een = Math.min(ind.aw / ind.bb.w, ind.ah / ind.bb.h);
+      const pt1 = (NAAM_PX * een) / PT;
+      if (pt1 >= 7) tekst += `<br>Op 1 pagina zouden de namen ${NP.fmt(pt1)} pt zijn: kies <em>1 × 1 pagina’s</em> als dat leesbaar genoeg is.`;
+    }
     if (ind.naamPt < 7) { tekst += '<br>Let op: de tekst wordt erg klein en is waarschijnlijk slecht leesbaar. Kies <em>Leesbaar</em> of een groter papierformaat.'; waarschuwing = true; }
     return { tekst, waarschuwing };
+  };
+  NP.K_LEESBAAR = K_LEESBAAR;
+
+  /* Paginaraster als SVG (voor het voorbeeld en het canvas). f = schaal voor lijndiktes en letters. */
+  NP.tekenPaginaRaster = function (ind, f) {
+    if (!ind) return '';
+    let s = '';
+    for (const pg of ind.paginas) {
+      const w = pg.x2 - pg.x, h = pg.y2 - pg.y;
+      s += `<rect x="${pg.x}" y="${pg.y}" width="${w}" height="${h}" fill="rgba(29,78,216,.035)" stroke="#1D4ED8" stroke-width="${1.6 * f}" stroke-dasharray="${8 * f} ${5 * f}"/>`;
+      s += `<text x="${pg.x + 8 * f}" y="${pg.y + 22 * f}" font-size="${18 * f}" font-weight="700" fill="#1D4ED8" font-family='${NP.FONT}'>${pg.code}</text>`;
+    }
+    for (const pg of ind.paginas) {
+      const R = ind.paginas.find(q => q.ci === pg.ci + 1 && q.ri === pg.ri);
+      const O = ind.paginas.find(q => q.ci === pg.ci && q.ri === pg.ri + 1);
+      if (R) s += `<rect x="${R.x}" y="${pg.y}" width="${pg.x2 - R.x}" height="${pg.y2 - pg.y}" fill="rgba(29,78,216,.10)"/>`;
+      if (O) s += `<rect x="${pg.x}" y="${O.y}" width="${pg.x2 - pg.x}" height="${pg.y2 - O.y}" fill="rgba(29,78,216,.10)"/>`;
+    }
+    return s;
   };
 
   function legenda() {
@@ -104,8 +141,10 @@
     if (!ind) return;
     const doel = document.getElementById('afdruk');
     const { pap, k } = ind;
-    const datum = new Date().toLocaleDateString('nl-NL');
-    const naam = NP.esc(p.naam || 'Netwerkplanning');
+    const fmtDatum = d => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? `${+m[3]}-${+m[2]}-${m[1]}` : (d || ''); };
+    const datum = p.docDatum ? fmtDatum(p.docDatum) : new Date().toLocaleDateString('nl-NL');
+    const info = [p.docVersie ? 'versie ' + p.docVersie : '', p.status || '', datum].filter(Boolean).map(NP.esc).join(' · ');
+    const naam = NP.esc(p.naam || 'Netwerkplanning') + (info ? ' </strong>· ' + info + '<strong>' : '');
     const tekenOpts = { reken, zw: opts.zw, scherm: false };
     const inhoud = NP.defs(NP.kleuren(opts.zw)) + '<g>' + NP.tekenRelaties(p, tekenOpts) + NP.tekenKnopen(p, tekenOpts) + '</g>';
     const svgH = ind.ah;
@@ -126,7 +165,7 @@
         raster += `<text x="${pg.x + 2 / ko}" y="${pg.y + lab + 1 / ko}" font-size="${lab}" font-weight="700" fill="#1D4ED8" font-family='${NP.FONT}'>${pg.code}</text>`;
       }
       html += paginaOpen() +
-        `<div class="pkop" style="height:${KOP_MM}mm"><span><strong>${naam}</strong> · overzicht · afgedrukt ${datum}</span><span>pagina ${nr} van ${totaal}</span></div>` +
+        `<div class="pkop" style="height:${KOP_MM}mm"><span><strong>${naam}</strong> · overzicht</span><span>pagina ${nr} van ${totaal}</span></div>` +
         `<svg xmlns="http://www.w3.org/2000/svg" width="${ind.aw}mm" height="${svgH}mm" viewBox="${bb.x} ${bb.y} ${bb.w} ${bb.h}" preserveAspectRatio="xMidYMid meet">${inhoud}${raster}</svg>` +
         voet + '</div>';
     }
@@ -153,11 +192,11 @@
       if (O) marks += lijn(pg.x, pg.y2, pg.x2, pg.y2);
       const enkel = ind.paginas.length === 1;
       html += paginaOpen() +
-        `<div class="pkop" style="height:${KOP_MM}mm"><span><strong>${naam}</strong> · afgedrukt ${datum}</span><span>${enkel ? '' : `<span class="pcode">${pg.code}</span> · `}pagina ${nr} van ${totaal}${enkel ? '' : paginakaart(ind, pg)}</span></div>` +
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${w * k}mm" height="${h * k}mm" viewBox="${pg.x} ${pg.y} ${w} ${h}">` +
+        `<div class="pkop" style="height:${KOP_MM}mm"><span><strong>${naam}</strong></span><span>${enkel ? '' : `<span class="pcode">${pg.code}</span> · `}pagina ${nr} van ${totaal}${enkel ? '' : paginakaart(ind, pg)}</span></div>` +
+        `<div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0"><svg xmlns="http://www.w3.org/2000/svg" width="${w * k}mm" height="${h * k}mm" viewBox="${pg.x} ${pg.y} ${w} ${h}">` +
         `<defs><clipPath id="${clipId}"><rect x="${pg.x}" y="${pg.y}" width="${w}" height="${h}"/></clipPath></defs>` +
-        `<g clip-path="url(#${clipId})">${marks}${inhoud}</g></svg>` +
-        `<div style="flex:1"></div>` + voet + '</div>';
+        `<g clip-path="url(#${clipId})">${marks}${inhoud}</g></svg></div>` +
+        voet + '</div>';
     }
     doel.innerHTML = html;
     document.body.classList.add('afdrukken');

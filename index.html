@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Netwerkplanner</title>
-<link rel="stylesheet" href="css/style.css?v=0.3">
+<link rel="stylesheet" href="css/style.css?v=0.4">
 </head>
 <body>
 <div id="app">
   <header class="balk">
     <div class="merk">Netwerkplanner <span class="versie" id="versieLabel"></span></div>
     <input id="projectNaam" class="projectnaam" type="text" aria-label="Projectnaam" title="Projectnaam">
+    <span class="docinfo" id="docInfo" title="Documentversie en status (aan te passen in het paneel rechts als niets is geselecteerd)"></span>
     <span class="scheid"></span>
     <button id="btnNieuw" title="Nieuw project (Ctrl+N)">Nieuw</button>
     <button id="btnOpen" title="Openen uit Excel (Ctrl+O)">Openen uit Excel</button>
@@ -43,6 +44,7 @@
       <svg id="svg" class="svg" xmlns="http://www.w3.org/2000/svg">
         <g id="defs"></g>
         <g id="wereld">
+          <g id="laagPagina"></g>
           <g id="laagRel"></g>
           <g id="laagKnoop"></g>
           <g id="laagTijdelijk"></g>
@@ -145,31 +147,42 @@
 </dialog>
 
 <!-- Afdrukken -->
-<dialog id="dlgPrint" class="venster breed">
+<dialog id="dlgPrint" class="venster afdrukvenster">
   <form method="dialog">
     <h2>Afdrukken of PDF</h2>
-    <div class="twee">
-      <label class="veld">Papier<select id="prPapier"><option>A3</option><option>A4</option><option>A2</option></select></label>
-      <label class="veld">Richting<select id="prRichting"><option value="liggend">Liggend</option><option value="staand">Staand</option></select></label>
+    <div class="afdrukgrid">
+      <div class="kolom">
+        <div class="twee">
+          <label class="veld">Papier<select id="prPapier"><option>A3</option><option>A4</option><option>A2</option></select></label>
+          <label class="veld">Richting<select id="prRichting"><option value="liggend">Liggend</option><option value="staand">Staand</option></select></label>
+        </div>
+        <fieldset class="kolom">
+          <legend>Schaal</legend>
+          <label class="check"><input type="radio" name="prSchaal" value="leesbaar" checked> <span><strong>Leesbaar</strong>: namen minimaal 9 pt</span></label>
+          <label class="check"><input type="radio" name="prSchaal" value="paginas"> <span>Zo groot mogelijk op <input type="number" id="prNx" value="1" min="1" max="20" aria-label="Pagina's breed"> × <input type="number" id="prNy" value="1" min="1" max="20" aria-label="Pagina's hoog"> pagina’s (breed × hoog)</span></label>
+          <label class="check"><input type="radio" name="prSchaal" value="vast"> <span>Zelf kiezen: <input type="number" id="prPct" value="100" min="20" max="300" step="5" aria-label="Schaal in procent"> %</span></label>
+          <input type="range" id="prSlider" min="20" max="300" step="5" value="100" aria-label="Schaal schuiven">
+          <p class="klein">100% = leesbaar (namen 9 pt). Schuiven zet de schaal op <em>Zelf kiezen</em>.</p>
+        </fieldset>
+        <label class="veld">Overlap tussen pagina’s (mm)<input type="number" id="prOverlap" value="15" min="0" max="60"></label>
+        <div class="kolom">
+          <label class="check"><input type="checkbox" id="prNaden" checked> Naden in witruimte leggen (geen blok doorsnijden)</label>
+          <label class="check"><input type="checkbox" id="prOverzicht" checked> Overzichtspagina vooraf (bij meer dan 1 pagina)</label>
+          <label class="check"><input type="checkbox" id="prLegenda" checked> Legenda onderaan</label>
+          <label class="check"><input type="checkbox" id="prZw"> Zwart-wit (kritiek = dikke lijn)</label>
+          <label class="check"><input type="checkbox" id="prRaster"> Paginaraster ook op het canvas tonen</label>
+        </div>
+      </div>
+      <div class="kolom">
+        <div class="klein">Voorbeeld: zo wordt de planning over de pagina’s verdeeld</div>
+        <div class="afdrukvoorbeeld"><svg id="prVoorbeeld" xmlns="http://www.w3.org/2000/svg"></svg></div>
+        <p class="samenvatting" id="prSamenvatting"></p>
+      </div>
     </div>
-    <fieldset class="kolom">
-      <legend>Schaal</legend>
-      <label class="check"><input type="radio" name="prSchaal" value="leesbaar" checked> <span><strong>Leesbaar</strong>: namen minimaal 9 pt; het aantal pagina’s volgt daaruit</span></label>
-      <label class="check"><input type="radio" name="prSchaal" value="een"> <span>Op 1 pagina (melding als de tekst kleiner wordt dan 7 pt)</span></label>
-      <label class="check"><input type="radio" name="prSchaal" value="vast"> <span>Vast: <input type="number" id="prPct" value="100" min="20" max="400" step="5" aria-label="Schaal in procent"> % (100% = leesbaar)</span></label>
-    </fieldset>
-    <label class="veld">Overlap tussen pagina’s (mm)<input type="number" id="prOverlap" value="15" min="0" max="60"></label>
-    <div class="kolom">
-      <label class="check"><input type="checkbox" id="prNaden" checked> Naden in witruimte leggen (geen blok doorsnijden)</label>
-      <label class="check"><input type="checkbox" id="prOverzicht" checked> Overzichtspagina vooraf (bij meer dan 1 pagina)</label>
-      <label class="check"><input type="checkbox" id="prLegenda" checked> Legenda onderaan</label>
-      <label class="check"><input type="checkbox" id="prZw"> Zwart-wit (kritiek = dikke lijn)</label>
-    </div>
-    <p class="samenvatting" id="prSamenvatting"></p>
     <p class="klein">Voor een PDF kies je in het afdrukvenster van de browser <strong>Opslaan als PDF</strong>. Zet daar marges op <em>Geen</em> en vink <em>Achtergrondafbeeldingen</em> aan als je kleuren mist.</p>
     <div class="knoppen">
       <span class="vul"></span>
-      <button value="annuleren">Annuleren</button>
+      <button value="annuleren">Sluiten</button>
       <button type="button" id="prGo" class="primair">Afdrukken…</button>
     </div>
   </form>
@@ -201,11 +214,11 @@
 <script>
   if (!window.XLSX) document.write('<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"><\/script>');
 </script>
-<script src="js/model.js?v=0.3"></script>
-<script src="js/render.js?v=0.3"></script>
-<script src="js/excel.js?v=0.3"></script>
-<script src="js/print.js?v=0.3"></script>
-<script src="js/help.js?v=0.3"></script>
-<script src="js/app.js?v=0.3"></script>
+<script src="js/model.js?v=0.4"></script>
+<script src="js/render.js?v=0.4"></script>
+<script src="js/excel.js?v=0.4"></script>
+<script src="js/print.js?v=0.4"></script>
+<script src="js/help.js?v=0.4"></script>
+<script src="js/app.js?v=0.4"></script>
 </body>
 </html>

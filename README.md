@@ -31,7 +31,7 @@ Voor Excel heeft de tool de bibliotheek SheetJS nodig. Die wordt via internet ge
 |---|---|
 | Activiteiten | ID, Soort (activiteit/start/tussentijds/eind), Naam, Rol, Doorlooptijd, Niet vóór, Notitie · *grijs (alleen om te lezen):* Vroegste start, Vroegste einde, Laatste start, Laatste einde, Totale speling, Kritiek |
 | Relaties | Van, Naar, Type (FS/SS/FF/SF), Tijdsverschil, Aangrijpingspunt (begin/tijdens/einde), Na, Na-eenheid (dagen/%), Lus (ja/nee) |
-| Project | Naam, Tijdseenheid, Startdatum, Bestandsversie, Gemaakt met |
+| Project | Naam, Tijdseenheid, Documentdatum, Versie, Status, Bestandsversie, Gemaakt met, Afdruk … (afdrukinstellingen) |
 | _indeling | *verborgen:* ID, X, Y (plek op het canvas) |
 
 Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnieuw berekend.
@@ -39,6 +39,21 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 ---
 
 ## Wijzigingen per versie
+
+### v0.4 (16-11-2026)
+
+**Projectgegevens**
+- Bij het project (paneel rechts als niets is geselecteerd) staan nu *Documentdatum*, *Versie* en *Status* (met keuzelijst: Concept, Ter review, Ter vaststelling, Vastgesteld, Vervallen; vrije tekst mag ook). De startdatum is vervallen.
+- Versie en status staan naast de projectnaam in de werkbalk en in de kop van elke afgedrukte pagina, samen met de documentdatum.
+- Opgeslagen in het Excel-tabblad *Project*.
+
+**Afdrukken**
+- Het afdrukvenster toont live een voorbeeld van het hele netwerk met het paginaraster, de paginacodes en de overlapbanden.
+- Nieuwe schaalkeuze *Zo groot mogelijk op n × m pagina’s*, en bij *Zelf kiezen* een schuif (20–300%; 100% = leesbaar, namen 9 pt). De samenvatting toont schaal en lettergrootte, en zegt hoe groot de tekst op 1 pagina zou worden.
+- Optie *Paginaraster ook op het canvas tonen* (ook in het projectpaneel): de paginagrenzen staan dan tijdens het werken op het canvas.
+- Opgelost: bij een netwerk dat net niet op één vel past, werd de tweede pagina grotendeels leeg. Het netwerk wordt nu gelijkmatig over de pagina’s verdeeld (naden nog steeds zo veel mogelijk tussen de blokken) en de tekening staat midden op het vel.
+- De afdrukinstellingen worden met het project bewaard (in de browser en in Excel).
+
 
 ### v0.3 (16-11-2026)
 - Het label *wacht n* op relaties is weg (ook het vinkje *Wachttijd*, de Excel-kolom en de regel in de legenda). Hoe lang iets kan wachten, lees je af aan vroegste/laatste tijden en de speling in het blok.

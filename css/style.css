@@ -157,3 +157,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 #laagTijdelijk { pointer-events: none; }
 .relrij span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .veld input, .veld select { min-width: 0; width: 100%; }
+
+.afdrukvenster { width: 940px; }
+.afdrukgrid { display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: start; }
+.afdrukvoorbeeld { border: 1px solid var(--rand); border-radius: 8px; background: #FAFAF8; height: 380px; }
+.afdrukvoorbeeld svg { width: 100%; height: 100%; display: block; }
+#prSlider { width: 100%; }
+.docinfo { font-size: 12px; color: var(--zacht); white-space: nowrap; }
+#laagPagina { pointer-events: none; }
+@media (max-width: 980px) { .afdrukgrid { grid-template-columns: 1fr; } }

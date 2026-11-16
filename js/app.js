@@ -119,9 +119,11 @@
     $('defs').innerHTML = NP.defs(NP.kleuren(false));
     $('laagRel').innerHTML = NP.tekenRelaties(S.p, opts);
     $('laagKnoop').innerHTML = NP.tekenKnopen(S.p, opts);
+    tekenPaginaLaag();
     $('leeg').hidden = S.p.activiteiten.length > 0;
     $('uitlijnbalk').hidden = S.sel.size < 2;
     if (document.activeElement !== $('projectNaam')) $('projectNaam').value = S.p.naam || '';
+    $('docInfo').textContent = [S.p.docVersie ? 'versie ' + S.p.docVersie : '', S.p.status || ''].filter(Boolean).join(' · ');
     tekenLijst();
     tekenInspecteur();
     tekenStatus();
@@ -305,7 +307,13 @@
     return `<div class="paneelkop">Project</div>
       <label class="veld">Projectnaam<input data-project="naam" type="text" value="${NP.esc(S.p.naam)}"></label>
       <label class="veld">Tijdseenheid<input data-project="eenheid" type="text" value="${NP.esc(S.p.eenheid)}"></label>
-      <label class="veld">Startdatum (nog alleen ter info)<input data-project="startdatum" type="date" value="${NP.esc(S.p.startdatum)}"></label>
+      <label class="veld">Documentdatum<input data-project="docDatum" type="date" value="${NP.esc(S.p.docDatum)}"></label>
+      <div class="twee">
+        <label class="veld">Versie<input data-project="docVersie" type="text" value="${NP.esc(S.p.docVersie)}" placeholder="bijv. 1.0"></label>
+        <label class="veld">Status<input data-project="status" type="text" list="statusLijst" value="${NP.esc(S.p.status)}" placeholder="bijv. Concept"></label>
+      </div>
+      <datalist id="statusLijst"><option value="Concept"><option value="Ter review"><option value="Ter vaststelling"><option value="Vastgesteld"><option value="Vervallen"></datalist>
+      <label class="check"><input type="checkbox" id="chkPaginaRaster"${printInstellingen().raster ? ' checked' : ''}> Paginaraster op het canvas tonen</label>
       <p class="klein">${r.kringFout ? 'Rekenen gestopt: er zit een kring in het netwerk.' : `Projectduur: <strong>${NP.fmt(r.projectEinde)}</strong> ${NP.esc(S.p.eenheid || '')}`}</p>
       <p class="klein">Klik op een activiteit om haar te bewerken. Dubbelklik op een pijl om een relatie te bewerken.</p>`;
   }
@@ -544,7 +552,7 @@
     const R = (id, van, naar, type, verschil, lus) => ({ id, van, naar, type, verschil, lus: !!lus, aangrijp: 'begin', na: 0, naEenheid: 'dagen' });
     bewaarStap();
     S.p = {
-      naam: 'Voorbeeld onderwijsprogramma', eenheid: 'werkdagen', startdatum: '',
+      naam: 'Voorbeeld onderwijsprogramma', eenheid: 'werkdagen', docDatum: new Date().toISOString().slice(0, 10), docVersie: '0.1', status: 'Concept',
       activiteiten: [
         A('A1', 'Aanleveren onderwijsgegevens door academie', 'Teamleider onderwijs', 0, 0, 0),
         A('A2', "Verwerken export in onderwijsprogramma's", 'Planner', 10, 320, 0),
@@ -630,19 +638,49 @@
   }
 
   /* ---------- afdrukvenster ---------- */
+  const PRINT_STANDAARD = { papier: 'A3', richting: 'liggend', schaal: 'leesbaar', pct: 100, nx: 1, ny: 1, overlap: 15, naden: true, overzicht: true, legenda: true, zw: false, raster: false };
+  function printInstellingen() { return Object.assign({}, PRINT_STANDAARD, S.p.afdruk || {}); }
   function printOpts() {
     return {
       papier: $('prPapier').value, richting: $('prRichting').value,
       schaal: (document.querySelector('input[name=prSchaal]:checked') || {}).value || 'leesbaar',
-      pct: $('prPct').value, overlap: $('prOverlap').value,
-      naden: $('prNaden').checked, overzicht: $('prOverzicht').checked, legenda: $('prLegenda').checked, zw: $('prZw').checked
+      pct: Number($('prPct').value) || 100, nx: Number($('prNx').value) || 1, ny: Number($('prNy').value) || 1, overlap: Number($('prOverlap').value) || 0,
+      naden: $('prNaden').checked, overzicht: $('prOverzicht').checked, legenda: $('prLegenda').checked, zw: $('prZw').checked, raster: $('prRaster').checked
     };
+  }
+  function vulPrintVenster() {
+    const o = printInstellingen();
+    $('prPapier').value = o.papier; $('prRichting').value = o.richting;
+    document.querySelectorAll('input[name=prSchaal]').forEach(i => { i.checked = i.value === (o.schaal === 'een' ? 'paginas' : o.schaal); });
+    $('prPct').value = o.pct; $('prSlider').value = o.pct; $('prNx').value = o.nx; $('prNy').value = o.ny; $('prOverlap').value = o.overlap;
+    $('prNaden').checked = o.naden; $('prOverzicht').checked = o.overzicht; $('prLegenda').checked = o.legenda; $('prZw').checked = o.zw; $('prRaster').checked = o.raster;
   }
   function printSamenvatting() {
     const o = printOpts();
-    const s = NP.printSamenvatting(NP.printIndeling(S.p, o), o);
+    const oud = JSON.stringify(S.p.afdruk || {});
+    S.p.afdruk = o;
+    if (JSON.stringify(o) !== oud) { autosave(); }
+    const ind = NP.printIndeling(S.p, o);
+    const s = NP.printSamenvatting(ind, o);
     $('prSamenvatting').innerHTML = s.tekst;
     $('prSamenvatting').classList.toggle('waarschuwing', s.waarschuwing);
+    // voorbeeld: hele netwerk met paginaraster
+    const vb = $('prVoorbeeld');
+    if (!ind) { vb.innerHTML = ''; return; }
+    let x1 = ind.bb.x, y1 = ind.bb.y, x2 = ind.bb.x + ind.bb.w, y2 = ind.bb.y + ind.bb.h;
+    for (const pg of ind.paginas) { x1 = Math.min(x1, pg.x); y1 = Math.min(y1, pg.y); x2 = Math.max(x2, pg.x2); y2 = Math.max(y2, pg.y2); }
+    const m = Math.max(x2 - x1, y2 - y1) * 0.03;
+    vb.setAttribute('viewBox', `${x1 - m} ${y1 - m} ${x2 - x1 + 2 * m} ${y2 - y1 + 2 * m}`);
+    const f = Math.max(x2 - x1, y2 - y1) / 560;
+    const tk = { reken: S.reken, zw: o.zw, scherm: false };
+    vb.innerHTML = NP.defs(NP.kleuren(o.zw)) + NP.tekenRelaties(S.p, tk) + NP.tekenKnopen(S.p, tk) + NP.tekenPaginaRaster(ind, f);
+    tekenPaginaLaag();
+  }
+  function tekenPaginaLaag() {
+    const o = printInstellingen();
+    const laag = $('laagPagina');
+    if (!o.raster || !S.p.activiteiten.length) { laag.innerHTML = ''; return; }
+    laag.innerHTML = NP.tekenPaginaRaster(NP.printIndeling(S.p, o), 1);
   }
 
   /* ---------- muis en toetsen op het canvas ---------- */
@@ -967,6 +1005,7 @@
   insp.addEventListener('focusin', e => { if (e.target.matches('[data-veld],[data-project],[data-relveld]')) focusSnap = momentopname(); });
   insp.addEventListener('input', e => {
     const t = e.target;
+    if (t.id === 'chkPaginaRaster') { S.p.afdruk = Object.assign(printInstellingen(), { raster: t.checked }); autosave(); tekenPaginaLaag(); return; }
     if (t.dataset.relveld) {
       const r = S.p.relaties.find(x => x.id === S.selRel);
       if (!r) return;
@@ -1083,9 +1122,13 @@
 
   function openPrint() {
     if (!S.p.activiteiten.length) { toast('Er staat nog niets op het canvas om af te drukken.'); return; }
+    vulPrintVenster();
     printSamenvatting();
     $('dlgPrint').showModal();
   }
+  $('prSlider').addEventListener('input', () => { $('prPct').value = $('prSlider').value; document.querySelector('input[name=prSchaal][value=vast]').checked = true; });
+  $('prPct').addEventListener('input', () => { $('prSlider').value = $('prPct').value; document.querySelector('input[name=prSchaal][value=vast]').checked = true; });
+  ['prNx', 'prNy'].forEach(id => $(id).addEventListener('input', () => { document.querySelector('input[name=prSchaal][value=paginas]').checked = true; }));
   $('dlgPrint').addEventListener('input', printSamenvatting);
   $('dlgPrint').addEventListener('change', printSamenvatting);
   $('prGo').onclick = () => { const o = printOpts(); $('dlgPrint').close(); NP.afdrukken(S.p, NP.bereken(S.p), o); };

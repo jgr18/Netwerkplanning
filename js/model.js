@@ -3,7 +3,7 @@
   'use strict';
   const NP = (window.NP = window.NP || {});
 
-  NP.VERSIE = '0.3';
+  NP.VERSIE = '0.4';
   NP.TYPES = ['FS', 'SS', 'FF', 'SF'];
   NP.TYPE_NAMEN = { FS: 'Finish–Start', SS: 'Start–Start', FF: 'Finish–Finish', SF: 'Start–Finish' };
   NP.SOORTEN = ['activiteit', 'start', 'tussen', 'eind'];
@@ -13,11 +13,13 @@
   NP.isGebeurtenis = a => !!a && a.soort && a.soort !== 'activiteit';
 
   NP.nieuwProject = function () {
-    return { naam: 'Nieuw project', eenheid: 'werkdagen', startdatum: '', activiteiten: [], relaties: [] };
+    return { naam: 'Nieuw project', eenheid: 'werkdagen', docDatum: new Date().toISOString().slice(0, 10), docVersie: '0.1', status: 'Concept', activiteiten: [], relaties: [] };
   };
 
   /* Oudere bestanden en losse invoer aanvullen tot het huidige model */
   NP.normaliseer = function (p) {
+    for (const k of ['docDatum', 'docVersie', 'status']) if (p[k] === undefined || p[k] === null) p[k] = '';
+    delete p.startdatum;
     for (const a of p.activiteiten) {
       if (!NP.SOORTEN.includes(a.soort)) a.soort = 'activiteit';
       if (NP.isGebeurtenis(a)) a.duur = 0;

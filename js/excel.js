@@ -31,7 +31,8 @@
       const trig = NP.isTriggerRelatie(p, r);
       rel.push([r.van, r.naar, trig ? '' : r.type, Number(r.verschil) || 0, trig ? r.aangrijp : '', trig && r.aangrijp === 'tijdens' ? Number(r.na) || 0 : '', trig && r.aangrijp === 'tijdens' ? r.naEenheid : '', r.lus ? 'ja' : 'nee']);
     }
-    const proj = [['Eigenschap', 'Waarde'], ['Naam', metData ? p.naam : ''], ['Tijdseenheid', p.eenheid || 'werkdagen'], ['Startdatum', metData ? (p.startdatum || '') : ''], ['Bestandsversie', 1], ['Gemaakt met', 'Netwerkplanner v' + NP.VERSIE]];
+    const proj = [['Eigenschap', 'Waarde'], ['Naam', metData ? p.naam : ''], ['Tijdseenheid', p.eenheid || 'werkdagen'], ['Documentdatum', metData ? (p.docDatum || '') : ''], ['Versie', metData ? (p.docVersie || '') : ''], ['Status', metData ? (p.status || '') : ''], ['Bestandsversie', 1], ['Gemaakt met', 'Netwerkplanner v' + NP.VERSIE]];
+    if (metData && p.afdruk) for (const [k, v] of Object.entries(p.afdruk)) proj.push(['Afdruk ' + k, v === true ? 'ja' : v === false ? 'nee' : v]);
     const ind = [['ID', 'X', 'Y']];
     if (metData) for (const a of p.activiteiten) ind.push([a.id, Math.round(a.x), Math.round(a.y)]);
 
@@ -124,7 +125,10 @@
         if (norm(k) === 'naam' && String(v).trim()) p.naam = String(v).trim();
         if (norm(k) === 'tijdseenheid' && String(v).trim()) p.eenheid = String(v).trim();
         if (norm(k) === 'gemaakt met') p._bron = String(v || '');
-        if (norm(k) === 'startdatum') p.startdatum = v instanceof Date ? v.toISOString().slice(0, 10) : String(v || '');
+        if (norm(k) === 'documentdatum') p.docDatum = v instanceof Date ? v.toISOString().slice(0, 10) : (typeof v === 'number' ? new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10) : String(v || ''));
+        if (norm(k) === 'versie') p.docVersie = String(v == null ? '' : v);
+        if (norm(k) === 'status') p.status = String(v || '');
+        if (norm(k).startsWith('afdruk ')) { p.afdruk = p.afdruk || {}; const sl = norm(k).slice(7); let w = v; if (w === 'ja') w = true; else if (w === 'nee') w = false; p.afdruk[sl] = w; }
       }
     }
     const wsI = blad(wb, '_indeling');

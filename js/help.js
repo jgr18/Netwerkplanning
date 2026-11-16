@@ -82,13 +82,13 @@
 <ul>
 <li><strong>Activiteiten</strong>: ID, Soort (activiteit, start, tussentijds, eind), Naam, Rol, Doorlooptijd, Niet vóór, Notitie. De grijze kolommen (Vroegste start t/m Kritiek) zet de tool erbij om te lezen; bij openen worden ze genegeerd en opnieuw berekend.</li>
 <li><strong>Relaties</strong>: Van (ID), Naar (ID), Type (FS/SS/FF/SF), Tijdsverschil, Aangrijpingspunt (begin/tijdens/einde, alleen voor triggers), Na, Na-eenheid (dagen of %), Lus (ja/nee).</li>
-<li><strong>Project</strong>: naam, tijdseenheid, startdatum.</li>
+<li><strong>Project</strong>: naam, tijdseenheid, documentdatum, versie, status en de afdrukinstellingen.</li>
 <li><strong>_indeling</strong> (verborgen): waar elk blok op het canvas staat. Ontbreekt een activiteit daar, dan plaatst de tool het blok zelf.</li>
 </ul>
 <p>Je kunt dus ook eerst in Excel een lijst maken en die openen. In Chrome en Edge overschrijft <em>Opslaan</em> het geopende bestand; in andere browsers wordt het een download. Je werk wordt ook steeds tussentijds in deze browser bewaard, zodat je na het per ongeluk sluiten verder kunt.</p>
 
 <h3>Afdrukken en PDF</h3>
-<p>Standaard A3 liggend. Bij <em>Leesbaar</em> worden namen nooit kleiner dan 9 pt; past het netwerk niet op één vel, dan verdeelt de tool het over meer pagina’s (A1, B1, … A2, B2 …). Tussen de pagina’s zit een overlap (standaard 15 mm), gemarkeerd met een blauwe band en stippellijnen, zodat je de vellen makkelijk aan elkaar legt. De naden worden waar mogelijk tussen de blokken gelegd. Voor een PDF kies je in het afdrukvenster <em>Opslaan als PDF</em>.</p>
+<p>Standaard A3 liggend. In het afdrukvenster zie je meteen een voorbeeld van hoe de planning over de pagina’s valt. Kies de schaal: <em>Leesbaar</em> (namen minimaal 9 pt), <em>zo groot mogelijk op n × m pagina’s</em>, of zelf een percentage met de schuif. Met <em>Paginaraster ook op het canvas tonen</em> zie je de paginagrenzen tijdens het werken, zodat je blokken kunt verschuiven tot ze goed vallen. De instellingen worden met het project opgeslagen. Kop van elke pagina: projectnaam, versie, status en documentdatum. Bij <em>Leesbaar</em> worden namen nooit kleiner dan 9 pt; past het netwerk niet op één vel, dan verdeelt de tool het over meer pagina’s (A1, B1, … A2, B2 …). Tussen de pagina’s zit een overlap (standaard 15 mm), gemarkeerd met een blauwe band en stippellijnen, zodat je de vellen makkelijk aan elkaar legt. De naden worden waar mogelijk tussen de blokken gelegd. Voor een PDF kies je in het afdrukvenster <em>Opslaan als PDF</em>.</p>
 `;
   };
 })();
