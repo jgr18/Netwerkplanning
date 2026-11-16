@@ -312,7 +312,7 @@
         <label class="veld">Versie<input data-project="docVersie" type="text" value="${NP.esc(S.p.docVersie)}" placeholder="bijv. 1.0"></label>
         <label class="veld">Status<input data-project="status" type="text" list="statusLijst" value="${NP.esc(S.p.status)}" placeholder="bijv. Concept"></label>
       </div>
-      <datalist id="statusLijst"><option value="Concept"><option value="Ter review"><option value="Ter vaststelling"><option value="Vastgesteld"><option value="Vervallen"></datalist>
+      <datalist id="statusLijst"><option value="Concept"><option value="Ter review"><option value="Voorlopig"><option value="Definitief"><option value="Gewijzigd"></datalist>
       <label class="check"><input type="checkbox" id="chkPaginaRaster"${printInstellingen().raster ? ' checked' : ''}> Paginaraster op het canvas tonen</label>
       <p class="klein">${r.kringFout ? 'Rekenen gestopt: er zit een kring in het netwerk.' : `Projectduur: <strong>${NP.fmt(r.projectEinde)}</strong> ${NP.esc(S.p.eenheid || '')}`}</p>
       <p class="klein">Klik op een activiteit om haar te bewerken. Dubbelklik op een pijl om een relatie te bewerken.</p>`;

@@ -43,7 +43,7 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 ### v0.4 (16-11-2026)
 
 **Projectgegevens**
-- Bij het project (paneel rechts als niets is geselecteerd) staan nu *Documentdatum*, *Versie* en *Status* (met keuzelijst: Concept, Ter review, Ter vaststelling, Vastgesteld, Vervallen; vrije tekst mag ook). De startdatum is vervallen.
+- Bij het project (paneel rechts als niets is geselecteerd) staan nu *Documentdatum*, *Versie* en *Status* (met keuzelijst: Concept, Ter review, Voorlopig, Definitief, Gewijzigd; vrije tekst mag ook). De startdatum is vervallen.
 - Versie en status staan naast de projectnaam in de werkbalk en in de kop van elke afgedrukte pagina, samen met de documentdatum.
 - Opgeslagen in het Excel-tabblad *Project*.
 
