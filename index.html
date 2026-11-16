@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Netwerkplanner</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=0.2">
 </head>
 <body>
 <div id="app">
@@ -123,6 +123,28 @@
   </form>
 </dialog>
 
+<!-- Activiteit of gebeurtenis bewerken -->
+<dialog id="dlgAct" class="venster">
+  <form method="dialog" id="formAct">
+    <h2 id="actTitel">Activiteit bewerken</h2>
+    <label class="veld">Naam<input type="text" id="actNaam" autocomplete="off"></label>
+    <label class="veld">Soort<select id="actSoort">
+      <option value="activiteit">Activiteit</option><option value="start">Startgebeurtenis</option>
+      <option value="tussen">Tussentijdse gebeurtenis</option><option value="eind">Eindgebeurtenis</option></select></label>
+    <label class="veld" id="actRolBlok">Rol / verantwoordelijke<input type="text" id="actRol" autocomplete="off"></label>
+    <label class="veld" id="actDuurBlok"><span>Doorlooptijd (<span class="eenheid">werkdagen</span>) · 0 = mijlpaal</span><input type="number" id="actDuur" min="0" step="0.5"></label>
+    <label class="veld" id="actNvBlok">Niet vóór (dag, leeg = geen)<input type="number" id="actNv" min="0" step="0.5"></label>
+    <label class="veld">Notitie<textarea id="actNotitie" rows="3"></textarea></label>
+    <p class="klein">Enter = opslaan · Esc = annuleren</p>
+    <div class="knoppen">
+      <button type="button" id="actWeg" class="gevaar">Verwijderen</button>
+      <span class="vul"></span>
+      <button type="button" id="actAnnuleer">Annuleren</button>
+      <button type="submit" id="actOk" class="primair">Opslaan</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Afdrukken -->
 <dialog id="dlgPrint" class="venster breed">
   <form method="dialog">
@@ -180,11 +202,11 @@
 <script>
   if (!window.XLSX) document.write('<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"><\/script>');
 </script>
-<script src="js/model.js"></script>
-<script src="js/render.js"></script>
-<script src="js/excel.js"></script>
-<script src="js/print.js"></script>
-<script src="js/help.js"></script>
-<script src="js/app.js"></script>
+<script src="js/model.js?v=0.2"></script>
+<script src="js/render.js?v=0.2"></script>
+<script src="js/excel.js?v=0.2"></script>
+<script src="js/print.js?v=0.2"></script>
+<script src="js/help.js?v=0.2"></script>
+<script src="js/app.js?v=0.2"></script>
 </body>
 </html>

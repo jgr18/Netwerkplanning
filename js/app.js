@@ -191,10 +191,14 @@
     const el = $('inspecteur');
     if (el.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) {
       // tijdens typen niet het hele paneel vervangen; alleen rekenwaarden bijwerken
+      const wi = el.querySelector('#relWachtInfo');
+      const rr = S.p.relaties.find(r => r.id === S.selRel);
+      if (wi && rr) wi.innerHTML = wachtInfo(rr);
       const vak = el.querySelector('.rekenvak');
       if (vak && S.sel.size === 1) { const id = [...S.sel][0]; vak.outerHTML = NP.isGebeurtenis(NP.getAct(S.p, id)) ? rekenvakGeb(id) : rekenvak(id); }
       return;
     }
+    if (S.selRel && S.p.relaties.find(r => r.id === S.selRel)) { el.innerHTML = paneelRelatie(S.selRel); return; }
     if (S.sel.size === 1) { const id = [...S.sel][0]; el.innerHTML = NP.isGebeurtenis(NP.getAct(S.p, id)) ? paneelGebeurtenis(id) : paneelActiviteit(id); }
     else if (S.sel.size > 1) el.innerHTML = paneelMeer();
     else el.innerHTML = paneelProject();
@@ -278,6 +282,31 @@
   function soortSelect(a) {
     return `<label class="veld">Soort<select data-veld="soort">${NP.SOORTEN.map(x => `<option value="${x}"${a.soort === x ? ' selected' : ''}>${NP.SOORT_NAMEN[x]}</option>`).join('')}</select></label>`;
   }
+  function wachtInfo(r) {
+    const w = S.reken && S.reken.wacht ? S.reken.wacht[r.id] : 0;
+    const eh = NP.esc(S.p.eenheid || 'werkdagen');
+    if (r.lus) return 'Deze relatie telt niet mee in de berekening.';
+    return w > 0 ? `B wacht nog <strong>${NP.fmt(w)}</strong> ${eh} op deze input; andere input bepaalt de start.` : 'Deze relatie bepaalt (mede) wanneer B kan beginnen.';
+  }
+  function paneelRelatie(id) {
+    const r = S.p.relaties.find(x => x.id === id);
+    const A = NP.getAct(S.p, r.van), B = NP.getAct(S.p, r.naar);
+    const trig = NP.isTriggerRelatie(S.p, r);
+    const eh = NP.esc(S.p.eenheid || 'werkdagen');
+    const w = S.reken && S.reken.wacht ? S.reken.wacht[r.id] : 0;
+    const opt = (v, t, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${t}</option>`;
+    return `<div class="paneelkop">Relatie ${NP.esc(r.id)}</div>
+      <p class="klein">Van (A)<br><strong>${NP.esc(A.id + ' · ' + (A.naam || ''))}</strong></p>
+      <p class="klein">Naar (B)<br><strong>${NP.esc(B.id + ' · ' + (B.naam || ''))}</strong></p>
+      ${trig ? `<label class="veld">Aangrijpingspunt<select data-relveld="aangrijp">${opt('begin', 'aan het begin', r.aangrijp)}${opt('tijdens', 'tijdens', r.aangrijp)}${opt('einde', 'aan het einde', r.aangrijp)}</select></label>
+        ${r.aangrijp === 'tijdens' ? `<div class="twee"><label class="veld">Na<input data-relveld="na" type="number" min="0" step="0.5" value="${NP.esc(r.na)}"></label><label class="veld">Eenheid<select data-relveld="naEenheid">${opt('dagen', 'dagen', r.naEenheid)}${opt('%', '%', r.naEenheid)}</select></label></div>` : ''}`
+        : NP.isGebeurtenis(B) ? '' : `<label class="veld">Type<select data-relveld="type">${NP.TYPES.map(t => opt(t, t + ' · ' + NP.TYPE_NAMEN[t], r.type)).join('')}</select></label>`}
+      <label class="veld"><span>Vertraging / tijdsverschil (${eh})</span><input data-relveld="verschil" type="number" step="0.5" value="${NP.esc(Number(r.verschil) || 0)}"></label>
+      <p class="klein">Positief = wachttijd · negatief = overlap.</p>
+      <label class="check lus"><input type="checkbox" data-relveld="lus"${r.lus ? ' checked' : ''}> <span><strong>Lus</strong>: stippellijn, telt niet mee</span></label>
+      <p class="klein" id="relWachtInfo">${wachtInfo(r)}</p>
+      <div class="knoppenrij"><button data-relopen="${NP.esc(r.id)}">Venster openen</button><button id="btnVerwijderRel" class="gevaar">Relatie verwijderen</button></div>`;
+  }
   function paneelMeer() {
     return `<div class="paneelkop">${S.sel.size} activiteiten geselecteerd</div>
       <p class="klein">Gebruik de uitlijnbalk boven het canvas, of sleep ze samen.</p>
@@ -311,7 +340,7 @@
     S.p.activiteiten.push(a);
     S.sel = new Set([id]); S.selRel = null;
     gewijzigd();
-    setTimeout(() => { const i = document.querySelector('#inspecteur [data-veld=naam]'); if (i) { i.focus(); i.select(); } }, 0);
+    openAct(id, true);
   }
   const nieuweActiviteit = (x, y) => nieuweKnoop('activiteit', x, y);
   function snap(v) { return $('chkRaster').checked ? Math.round(v / RASTER) * RASTER : Math.round(v); }
@@ -562,6 +591,7 @@
     document.querySelectorAll('#dlgRel .eenheid').forEach(e => e.textContent = S.p.eenheid || 'werkdagen');
     relUitleg();
     $('dlgRel').showModal();
+    setTimeout(() => { if ($('dlgRel').open) { $('relVerschil').focus(); $('relVerschil').select(); } }, 30);
   }
   function relUitleg() {
     const r = S.p.relaties.find(x => x.id === dlgRelId);
@@ -626,6 +656,86 @@
   /* ---------- muis en toetsen op het canvas ---------- */
   function knoopVan(el) { const g = el.closest && el.closest('.knoop'); return g ? g.dataset.id : null; }
 
+  function dubbelklik(sleutel, w) {
+    if (sleutel.startsWith('k:')) {
+      const id = sleutel.slice(2);
+      S.sel = new Set([id]); S.selRel = null; teken();
+      openAct(id, false);
+    } else if (sleutel.startsWith('r:')) {
+      openRelatie(sleutel.slice(2));
+    } else {
+      nieuweActiviteit(w.x - W / 2, w.y - H / 2);
+    }
+  }
+
+  /* ---------- venster activiteit / gebeurtenis ---------- */
+  let dlgAct = null; // { id, nieuw, snap }
+  function openAct(id, nieuw) {
+    const a = NP.getAct(S.p, id);
+    if (!a) return;
+    dlgAct = { id, nieuw, snap: momentopname() };
+    $('actTitel').textContent = (nieuw ? 'Nieuwe ' : '') + (NP.isGebeurtenis(a) ? 'gebeurtenis' : 'activiteit') + (nieuw ? '' : ' bewerken') + ' · ' + a.id;
+    $('actNaam').value = a.naam || '';
+    $('actSoort').value = a.soort || 'activiteit';
+    $('actRol').value = a.rol || '';
+    $('actDuur').value = Number(a.duur) || 0;
+    $('actNv').value = a.nietVoor === null || a.nietVoor === undefined ? '' : a.nietVoor;
+    $('actNotitie').value = a.notitie || '';
+    document.querySelectorAll('#dlgAct .eenheid').forEach(e => e.textContent = S.p.eenheid || 'werkdagen');
+    actVelden();
+    $('dlgAct').showModal();
+    const focusNaam = () => { if ($('dlgAct').open) { $('actNaam').focus(); $('actNaam').select(); } };
+    focusNaam();
+    setTimeout(focusNaam, 30);
+  }
+  function actVelden() {
+    const soort = $('actSoort').value;
+    const geb = soort !== 'activiteit';
+    $('actRolBlok').hidden = geb;
+    $('actDuurBlok').hidden = geb;
+    $('actNvBlok').hidden = !geb || soort === 'eind';
+  }
+  function actOpslaan() {
+    if (!dlgAct) return;
+    const a = NP.getAct(S.p, dlgAct.id);
+    if (!a) { dlgAct = null; $('dlgAct').close(); return; }
+    a.naam = $('actNaam').value;
+    a.notitie = $('actNotitie').value;
+    const soort = $('actSoort').value;
+    if (soort !== a.soort) wisselSoort(a, soort);
+    if (!NP.isGebeurtenis(a)) {
+      a.rol = $('actRol').value;
+      const d = parseFloat($('actDuur').value);
+      a.duur = isNaN(d) || d < 0 ? 0 : d;
+    } else if (a.soort !== 'eind') {
+      const v = parseFloat($('actNv').value);
+      a.nietVoor = isNaN(v) ? null : Math.max(0, v);
+    }
+    if (!dlgAct.nieuw && dlgAct.snap !== momentopname()) bewaarStap(dlgAct.snap);
+    dlgAct = null;
+    $('dlgAct').close();
+    gewijzigd();
+  }
+  function actAnnuleer() {
+    const d = dlgAct;
+    dlgAct = null;
+    $('dlgAct').close();
+    if (d && d.nieuw) { ongedaan(); S.redo = []; teken(); }
+  }
+  function wisselSoort(a, nieuw) {
+    const wasGeb = NP.isGebeurtenis(a);
+    a.soort = nieuw;
+    if (NP.isGebeurtenis(a)) {
+      a.duur = 0;
+      if (!wasGeb) { a.x += (W - NP.GEBEURTENIS.W) / 2; a.y += (H - NP.GEBEURTENIS.H) / 2; }
+      if (nieuw === 'start') S.p.relaties = S.p.relaties.filter(r => r.naar !== a.id);
+      if (nieuw === 'eind') S.p.relaties = S.p.relaties.filter(r => r.van !== a.id);
+    } else if (wasGeb) {
+      a.duur = 1; a.nietVoor = null;
+      a.x -= (W - NP.GEBEURTENIS.W) / 2; a.y -= (H - NP.GEBEURTENIS.H) / 2;
+    }
+  }
+
   function doelOnder(e) {
     const onder = document.elementFromPoint(e.clientX, e.clientY);
     const poort = onder && onder.closest && onder.closest('.poort');
@@ -666,7 +776,18 @@
       svg.setPointerCapture(e.pointerId);
       return;
     }
-    const poort = e.target.closest('.poort');
+    const poortEl = e.target.closest('.poort');
+    const kId = knoopVan(e.target), relEl = e.target.closest('.rel');
+    const sleutel = poortEl ? null : kId ? 'k:' + kId : relEl ? 'r:' + relEl.dataset.rel : 'leeg';
+    const nu = performance.now(), vorige = S.klik;
+    if (sleutel && vorige && vorige.sleutel === sleutel && nu - vorige.t < 450 && Math.hypot(e.clientX - vorige.x, e.clientY - vorige.y) < 8) {
+      S.klik = null;
+      e.preventDefault();
+      dubbelklik(sleutel, w);
+      return;
+    }
+    S.klik = sleutel ? { sleutel, t: nu, x: e.clientX, y: e.clientY } : null;
+    const poort = poortEl;
     if (poort) {
       S.modus = 'verbinden';
       S.m = { van: poort.dataset.id, poort: poort.dataset.poort };
@@ -694,6 +815,7 @@
     if (rel) {
       S.selRel = rel.dataset.rel; S.sel.clear();
       teken();
+      setTimeout(() => { const i = $('inspecteur').querySelector('[data-relveld=verschil]'); if (i) { i.focus(); i.select(); } }, 0);
       return;
     }
     // lege plek: kader trekken
@@ -793,20 +915,6 @@
   svg.addEventListener('pointerup', eindeMuis);
   svg.addEventListener('pointercancel', eindeMuis);
 
-  svg.addEventListener('dblclick', e => {
-    const id = knoopVan(e.target);
-    if (id) {
-      S.sel = new Set([id]); teken();
-      const i = document.querySelector('#inspecteur [data-veld=naam]');
-      if (i) { i.focus(); i.select(); }
-      return;
-    }
-    const rel = e.target.closest('.rel');
-    if (rel) { openRelatie(rel.dataset.rel); return; }
-    const w = schermNaarWereld(e.clientX, e.clientY);
-    nieuweActiviteit(w.x - W / 2, w.y - H / 2);
-  });
-
   svg.addEventListener('wheel', e => {
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) {
@@ -864,9 +972,23 @@
 
   const insp = $('inspecteur');
   let focusSnap = null;
-  insp.addEventListener('focusin', e => { if (e.target.matches('[data-veld],[data-project]')) focusSnap = momentopname(); });
+  insp.addEventListener('focusin', e => { if (e.target.matches('[data-veld],[data-project],[data-relveld]')) focusSnap = momentopname(); });
   insp.addEventListener('input', e => {
     const t = e.target;
+    if (t.dataset.relveld) {
+      const r = S.p.relaties.find(x => x.id === S.selRel);
+      if (!r) return;
+      const f = t.dataset.relveld;
+      if (f === 'verschil' || f === 'na') { const v = parseFloat(t.value); r[f] = isNaN(v) ? 0 : (f === 'na' ? Math.max(0, v) : v); }
+      else if (f === 'lus') {
+        if (!t.checked && NP.maaktKring(S.p, r.van, r.naar, r.id)) { t.checked = true; toast('Zonder lus sluit deze relatie een kring. Maak eerst een andere relatie in de kring een lus.'); return; }
+        r.lus = t.checked;
+      } else r[f] = t.value;
+      S.vuil = true; autosave();
+      if (f === 'aangrijp' || f === 'lus' || f === 'type' || f === 'naEenheid') { if (focusSnap && focusSnap !== momentopname()) bewaarStap(focusSnap); focusSnap = null; t.blur(); }
+      teken();
+      return;
+    }
     if (t.dataset.veld && S.sel.size === 1) {
       const a = NP.getAct(S.p, [...S.sel][0]);
       if (t.dataset.veld === 'soort') return;
@@ -887,17 +1009,7 @@
     if (oud === nieuw) return;
     bewaarStap(focusSnap || momentopname());
     focusSnap = null;
-    const wasGeb = NP.isGebeurtenis(a);
-    a.soort = nieuw;
-    if (NP.isGebeurtenis(a)) {
-      a.duur = 0;
-      if (!wasGeb) { a.x += (W - NP.GEBEURTENIS.W) / 2; a.y += (H - NP.GEBEURTENIS.H) / 2; }
-      if (nieuw === 'start') S.p.relaties = S.p.relaties.filter(r => r.naar !== a.id);
-      if (nieuw === 'eind') S.p.relaties = S.p.relaties.filter(r => r.van !== a.id);
-    } else if (wasGeb) {
-      a.duur = 1; a.nietVoor = null;
-      a.x -= (W - NP.GEBEURTENIS.W) / 2; a.y -= (H - NP.GEBEURTENIS.H) / 2;
-    }
+    wisselSoort(a, nieuw);
     t.blur();
     gewijzigd();
   });
@@ -911,6 +1023,7 @@
     if (!t) return;
     if (t.dataset.relopen) { openRelatie(t.dataset.relopen); return; }
     if (t.id === 'btnVerwijderAct' || t.id === 'btnVerwijderSel') { S.selRel = null; verwijderSelectie(); return; }
+    if (t.id === 'btnVerwijderRel') { verwijderSelectie(); return; }
     if (t.id === 'nrToevoegen') {
       const id = [...S.sel][0], ander = $('nrAndere').value;
       const voor = $('nrRichting').value === 'voor';
@@ -969,6 +1082,11 @@
   $('relNaEenheid').addEventListener('change', relUitleg);
   $('relVerschil').addEventListener('input', relUitleg);
   $('relOk').onclick = relOpslaan;
+  $('actSoort').addEventListener('change', actVelden);
+  $('formAct').addEventListener('submit', e => { e.preventDefault(); actOpslaan(); });
+  $('actAnnuleer').onclick = actAnnuleer;
+  $('dlgAct').addEventListener('cancel', e => { e.preventDefault(); actAnnuleer(); });
+  $('actWeg').onclick = () => { const d = dlgAct; dlgAct = null; $('dlgAct').close(); if (!d) return; if (!d.nieuw) bewaarStap(d.snap); S.p.activiteiten = S.p.activiteiten.filter(a => a.id !== d.id); S.p.relaties = S.p.relaties.filter(r => r.van !== d.id && r.naar !== d.id); S.sel.delete(d.id); gewijzigd(); };
   $('relWeg').onclick = () => { bewaarStap(); S.p.relaties = S.p.relaties.filter(r => r.id !== dlgRelId); S.selRel = null; $('dlgRel').close(); gewijzigd(); };
   $('formRel').addEventListener('submit', e => { if (e.submitter && e.submitter.value === 'annuleren') return; e.preventDefault(); relOpslaan(); });
 

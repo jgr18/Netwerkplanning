@@ -234,7 +234,8 @@
       out += `<g class="knoop" data-id="${esc(a.id)}" transform="translate(${a.x} ${a.y})">`;
       out += `<title>${esc(a.id + ' · ' + (a.naam || ''))}</title>`;
       if (sel) out += `<rect x="-5" y="-5" width="${W + 10}" height="${H + 10}" rx="9" fill="rgba(29,78,216,.15)"/>`;
-      out += `<rect x="0" y="0" width="${W}" height="${H}" rx="6" fill="#FFFFFF" stroke="${sel ? '#1D4ED8' : k.rand}" stroke-width="${sel ? 2.2 : (kritiek && opts.zw ? 2.4 : 1.4)}"/>`;
+      const mijlpaal = !(Number(a.duur) > 0);
+      out += `<rect x="0" y="0" width="${W}" height="${H}" rx="6" fill="#FFFFFF"/>`;
       out += `<path d="M0 6 Q0 0 6 0 H${W - 6} Q${W} 0 ${W} 6 V${KOP} H0 Z" fill="${kritiek ? k.kritiekKop : k.kop}" class="kop"/>`;
       out += `<line x1="0" y1="${KOP}" x2="${W}" y2="${KOP}" stroke="${k.cel}"/>`;
       const naamFont = '600 13px ' + NP.FONT;
@@ -266,6 +267,7 @@
         const x = NP.aangrijpX(p, r, a) - a.x;
         out += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="${k.trigger}" stroke-width="1" stroke-dasharray="3 3" opacity=".8"/>`;
       }
+      out += `<rect x="0" y="0" width="${W}" height="${H}" rx="6" fill="none" stroke="${sel ? '#1D4ED8' : k.rand}" stroke-width="${sel ? 2.6 : (kritiek && opts.zw ? 3 : 2.2)}"${mijlpaal ? ' stroke-dasharray="9 5"' : ''}/>`;
       if (opts.scherm) {
         out += `<circle class="poort" data-id="${esc(a.id)}" data-poort="start" cx="0" cy="${NP.KNOOP.POORT_Y}" r="7" fill="#FFFFFF" stroke="${k.rand}" stroke-width="1.5"><title>Startpoort</title></circle>`;
         out += `<circle class="poort" data-id="${esc(a.id)}" data-poort="einde" cx="${W}" cy="${NP.KNOOP.POORT_Y}" r="7" fill="#FFFFFF" stroke="${k.rand}" stroke-width="1.5"><title>Eindpoort</title></circle>`;

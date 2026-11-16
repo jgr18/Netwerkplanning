@@ -61,6 +61,15 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 **Excel**
 - Activiteiten: nieuwe kolommen *Soort* en *Niet vóór*. Relaties: *Aangrijpingspunt*, *Na*, *Na-eenheid* en rekenkolom *Wachttijd*. Bestanden van v0.1 blijven openen.
 
+**Bewerken (aanvulling op v0.2)**
+- Dubbelklik op een activiteit of gebeurtenis opent een venster om naam, soort, rol, doorlooptijd, niet vóór en notitie aan te passen. Dubbelklik op een pijl opent het relatievenster. (Dubbelklikken werkte eerder niet altijd, omdat het scherm tussen de twee klikken opnieuw werd getekend.)
+- Een nieuwe activiteit of gebeurtenis opent meteen dat venster met de naam geselecteerd: direct typen, Enter = opslaan, Esc = de nieuwe activiteit vervalt.
+- Eén klik op een pijl toont de relatie in het paneel rechts, met de cursor al in het veld *Vertraging / tijdsverschil*; ook type, aangrijpingspunt en lus zijn daar aan te passen.
+
+**Weergave (aanvulling op v0.2)**
+- Activiteiten met doorlooptijd 0 (mijlpalen) krijgen een dikke stippellijn als rand; gewone activiteiten een doorgetrokken rand van dezelfde, iets dikkere lijn.
+- Het versienummer staat achter de script- en CSS-bestanden (`?v=0.2`), zodat de browser na een update de nieuwe bestanden ophaalt.
+
 **Voorbeeld**
 - Het voorbeeldproject heeft nu ook een tussentijdse gebeurtenis (*Besluit CvB over faciliteiten*, niet vóór dag 8, tijdens na 2 dagen).
 

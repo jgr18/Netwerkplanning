@@ -12,12 +12,14 @@
 <tr><td>Vroegste start (VS)</td><td>Doorlooptijd (DL) – zelf invullen</td><td>Vroegste einde (VE)</td></tr>
 <tr><td>Laatste start (LS)</td><td>Totale speling (TS)</td><td>Laatste einde (LE)</td></tr>
 </table>
-<p>Naam, rol en doorlooptijd vul je in rechts in het paneel. De andere vijf getallen rekent de tool uit. Is de totale speling 0, dan wordt de kop rood en staat er <em>Kritiek</em>. Doorlooptijd 0 = mijlpaal.</p>
+<p>Naam, rol en doorlooptijd vul je in rechts in het paneel. De andere vijf getallen rekent de tool uit. Is de totale speling 0, dan wordt de kop rood en staat er <em>Kritiek</em>. Doorlooptijd 0 = mijlpaal: zo’n blok krijgt een dikke stippellijn als rand en werkt als een soort gebeurtenis. Gewone activiteiten hebben een doorgetrokken rand.</p>
 
 <h3>Werken op het canvas</h3>
 <table>
 <tr><th>Wat</th><th>Hoe</th></tr>
-<tr><td>Nieuwe activiteit</td><td>Dubbelklik op een lege plek, of <em>+ Activiteit</em></td></tr>
+<tr><td>Nieuwe activiteit</td><td>Dubbelklik op een lege plek, of <em>+ Activiteit</em>. Er opent direct een venster: typ de naam en druk op <kbd>Enter</kbd> (<kbd>Esc</kbd> = toch niet)</td></tr>
+<tr><td>Activiteit of gebeurtenis bewerken</td><td>Dubbelklik op het blok (of gebruik het paneel rechts)</td></tr>
+<tr><td>Relatie bewerken</td><td>Klik op de pijl: rechts kun je meteen de vertraging typen. Dubbelklik op de pijl opent het venster</td></tr>
 <tr><td>Verplaatsen</td><td>Blok vastpakken en slepen. Met <em>Raster</em> aan springt het op 20 px; houd <kbd>Alt</kbd> ingedrukt om vrij te slepen</td></tr>
 <tr><td>Meerdere selecteren</td><td><kbd>Shift</kbd> + klik, of een kader trekken op een lege plek</td></tr>
 <tr><td>Uitlijnen</td><td>Selecteer 2 of meer blokken; bovenaan verschijnt de uitlijnbalk</td></tr>
