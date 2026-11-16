@@ -4,7 +4,7 @@
   const NP = (window.NP = window.NP || {});
 
   const KOLOM_ACT = ['ID', 'Soort', 'Naam', 'Rol', 'Doorlooptijd', 'Niet vóór', 'Notitie', 'Vroegste start', 'Vroegste einde', 'Laatste start', 'Laatste einde', 'Totale speling', 'Kritiek'];
-  const KOLOM_REL = ['Van', 'Naar', 'Type', 'Tijdsverschil', 'Aangrijpingspunt', 'Na', 'Na-eenheid', 'Lus', 'Wachttijd'];
+  const KOLOM_REL = ['Van', 'Naar', 'Type', 'Tijdsverschil', 'Aangrijpingspunt', 'Na', 'Na-eenheid', 'Lus'];
   const SOORT_UIT = { activiteit: 'activiteit', start: 'start', tussen: 'tussentijds', eind: 'eind' };
   function soortIn(v) {
     const t = String(v == null ? '' : v).trim().toLowerCase();
@@ -29,8 +29,7 @@
     const rel = [KOLOM_REL];
     if (metData) for (const r of p.relaties) {
       const trig = NP.isTriggerRelatie(p, r);
-      const w = reken.wacht ? reken.wacht[r.id] : undefined;
-      rel.push([r.van, r.naar, trig ? '' : r.type, Number(r.verschil) || 0, trig ? r.aangrijp : '', trig && r.aangrijp === 'tijdens' ? Number(r.na) || 0 : '', trig && r.aangrijp === 'tijdens' ? r.naEenheid : '', r.lus ? 'ja' : 'nee', w === undefined || r.lus ? '' : w]);
+      rel.push([r.van, r.naar, trig ? '' : r.type, Number(r.verschil) || 0, trig ? r.aangrijp : '', trig && r.aangrijp === 'tijdens' ? Number(r.na) || 0 : '', trig && r.aangrijp === 'tijdens' ? r.naEenheid : '', r.lus ? 'ja' : 'nee']);
     }
     const proj = [['Eigenschap', 'Waarde'], ['Naam', metData ? p.naam : ''], ['Tijdseenheid', p.eenheid || 'werkdagen'], ['Startdatum', metData ? (p.startdatum || '') : ''], ['Bestandsversie', 1], ['Gemaakt met', 'Netwerkplanner v' + NP.VERSIE]];
     const ind = [['ID', 'X', 'Y']];
@@ -40,7 +39,7 @@
     const wsA = X.utils.aoa_to_sheet(act);
     wsA['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 42 }, { wch: 24 }, { wch: 12 }, { wch: 9 }, { wch: 30 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 8 }];
     const wsR = X.utils.aoa_to_sheet(rel);
-    wsR['!cols'] = [{ wch: 8 }, { wch: 8 }, { wch: 7 }, { wch: 13 }, { wch: 16 }, { wch: 6 }, { wch: 10 }, { wch: 6 }, { wch: 10 }];
+    wsR['!cols'] = [{ wch: 8 }, { wch: 8 }, { wch: 7 }, { wch: 13 }, { wch: 16 }, { wch: 6 }, { wch: 10 }, { wch: 6 }];
     const wsP = X.utils.aoa_to_sheet(proj);
     wsP['!cols'] = [{ wch: 16 }, { wch: 40 }];
     const wsI = X.utils.aoa_to_sheet(ind);
@@ -124,6 +123,7 @@
       for (const [k, v] of ruw) {
         if (norm(k) === 'naam' && String(v).trim()) p.naam = String(v).trim();
         if (norm(k) === 'tijdseenheid' && String(v).trim()) p.eenheid = String(v).trim();
+        if (norm(k) === 'gemaakt met') p._bron = String(v || '');
         if (norm(k) === 'startdatum') p.startdatum = v instanceof Date ? v.toISOString().slice(0, 10) : String(v || '');
       }
     }
@@ -134,6 +134,8 @@
       if (a && x !== null && y !== null) { a.x = x; a.y = y; }
     }
     NP.normaliseer(p);
+    if (/v0\.2\b/.test(p._bron || '')) NP.oudeGebeurtenisPlek(p);
+    delete p._bron;
     const zonderPlek = p.activiteiten.filter(a => a.x === null || a.y === null).map(a => a.id);
     return { project: p, meldingen, zonderPlek };
   };

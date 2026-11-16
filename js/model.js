@@ -3,7 +3,7 @@
   'use strict';
   const NP = (window.NP = window.NP || {});
 
-  NP.VERSIE = '0.2';
+  NP.VERSIE = '0.3';
   NP.TYPES = ['FS', 'SS', 'FF', 'SF'];
   NP.TYPE_NAMEN = { FS: 'Finish–Start', SS: 'Start–Start', FF: 'Finish–Finish', SF: 'Start–Finish' };
   NP.SOORTEN = ['activiteit', 'start', 'tussen', 'eind'];
@@ -31,6 +31,11 @@
       r.lus = !!r.lus;
     }
     return p;
+  };
+
+  /* In v0.2 stond het midden van een gebeurtenis 32 px hoger; zet oude posities om */
+  NP.oudeGebeurtenisPlek = function (p) {
+    for (const a of p.activiteiten) if (NP.isGebeurtenis(a) && typeof a.y === 'number') a.y -= 32;
   };
 
   NP.volgendId = function (lijst, prefix) {

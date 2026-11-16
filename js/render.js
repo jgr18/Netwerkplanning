@@ -4,17 +4,17 @@
   const NP = (window.NP = window.NP || {});
 
   const W = 240, H = 128, KOP = 56, CEL = 36;
-  const EW = 64, ER = 26; // gebeurtenis: vak 64×64, cirkel met straal 26
+  const EW = 64, EH = 128, ER = 26, ECY = 64; // gebeurtenis: vak 64×128, cirkel (straal 26) op poorthoogte
   NP.KNOOP = { W, H, KOP, CEL, POORT_Y: 64 };
-  NP.GEBEURTENIS = { W: EW, H: EW, R: ER };
+  NP.GEBEURTENIS = { W: EW, H: EH, R: ER };
   NP.FONT = '"Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif';
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   NP.esc = esc;
 
-  NP.maat = a => NP.isGebeurtenis(a) ? { w: EW, h: EW } : { w: W, h: H };
+  NP.maat = a => NP.isGebeurtenis(a) ? { w: EW, h: EH } : { w: W, h: H };
   /* Ruimte inclusief het naamlabel onder een gebeurtenis (voor selectie, afdruk en omhullende) */
-  NP.vlak = a => NP.isGebeurtenis(a) ? { x: a.x - 58, y: a.y, w: EW + 116, h: EW + 46 } : { x: a.x, y: a.y, w: W, h: H };
+  NP.vlak = a => NP.isGebeurtenis(a) ? { x: a.x - 58, y: a.y + ECY - ER - 4, w: EW + 116, h: 2 * ER + 50 } : { x: a.x, y: a.y, w: W, h: H };
 
   let ctx = null;
   function breedte(tekst, font) {
@@ -47,7 +47,7 @@
   }
 
   NP.poortPunt = function (a, poort) {
-    if (NP.isGebeurtenis(a)) return { x: a.x + EW / 2 + (poort === 'start' ? -ER : ER), y: a.y + EW / 2 };
+    if (NP.isGebeurtenis(a)) return { x: a.x + EW / 2 + (poort === 'start' ? -ER : ER), y: a.y + ECY };
     return { x: a.x + (poort === 'start' ? 0 : W), y: a.y + NP.KNOOP.POORT_Y };
   };
 
@@ -72,12 +72,14 @@
   NP.routeRel = function (p, r) {
     const A = NP.getAct(p, r.van), B = NP.getAct(p, r.naar);
     if (NP.isGebeurtenis(A) && !NP.isGebeurtenis(B)) {
-      // trigger: van de gebeurtenis naar de bovenkant van het blok, op het aangrijpingspunt
-      const cx = A.x + EW / 2, cy = A.y + EW / 2;
+      // trigger aan het begin = naar de startpoort, aan het einde = naar de eindpoort
+      if (r.aangrijp !== 'tijdens') return NP.route(A, B, r.aangrijp === 'einde' ? 'FF' : 'FS');
+      // tijdens: via de rechterkant van de gebeurtenis naar de bovenkant van het blok, op het aangrijpingspunt
+      const cx = A.x + EW / 2, cy = A.y + ECY;
       const tx = NP.aangrijpX(p, r, B);
-      if (B.y - 26 > cy + ER + 6) {
+      const zx = cx + ER + 16;
+      if (B.y - 26 > cy + 6) {
         const ym = B.y - 26;
-        const zx = cx + ER + 16;
         return schoon([{ x: cx + ER, y: cy }, { x: zx, y: cy }, { x: zx, y: ym }, { x: tx, y: ym }, { x: tx, y: B.y }]);
       }
       const ym = Math.min(cy - ER, B.y) - 30;
@@ -133,7 +135,7 @@
     return `<defs>${m('pijl-n', k.lijn)}${m('pijl-k', k.kritiekLijn)}${m('pijl-l', k.lus)}${m('pijl-s', '#1D4ED8')}${m('pijl-t', k.trigger)}</defs>`;
   };
 
-  /* opts: { reken, sel:Set, selRel, zw, scherm, wacht } */
+  /* opts: { reken, sel:Set, selRel, zw, scherm } */
   NP.tekenRelaties = function (p, opts) {
     const k = NP.kleuren(opts.zw);
     let out = '';
@@ -171,19 +173,14 @@
         delen.push(r.type + (v ? (v > 0 ? ' +' : ' −') + NP.fmt(Math.abs(v)) : ''));
       }
       if (r.lus) delen.unshift('↺ lus');
-      const w = opts.wacht !== false && opts.reken && opts.reken.wacht ? opts.reken.wacht[r.id] : 0;
       const tekst = delen.join(' · ');
-      const wachtTekst = !r.lus && w > 0 ? 'wacht ' + NP.fmt(w) : '';
-      if (tekst || wachtTekst) {
-        const lp = trigger ? { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y - 13 } : { x: (seg.a.x + seg.b.x) / 2, y: (seg.a.y + seg.b.y) / 2 };
-        const f1 = '600 11px ' + NP.FONT, f2 = 'italic 11px ' + NP.FONT;
-        const b1 = tekst ? breedte(tekst, f1) : 0, b2 = wachtTekst ? breedte(wachtTekst, f2) : 0;
-        const bw = b1 + b2 + (tekst && wachtTekst ? 10 : 0) + 12;
-        const ly = trigger ? lp.y : (seg.l > 70 && Math.abs(seg.a.y - seg.b.y) < 1 ? lp.y - 15 : lp.y);
+      if (tekst) {
+        const opTop = trigger && r.aangrijp === 'tijdens';
+        const lp = opTop ? { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y - 13 } : { x: (seg.a.x + seg.b.x) / 2, y: (seg.a.y + seg.b.y) / 2 };
+        const bw = breedte(tekst, '600 11px ' + NP.FONT) + 12;
+        const ly = opTop ? lp.y : (seg.l > 70 && Math.abs(seg.a.y - seg.b.y) < 1 ? lp.y - 15 : lp.y);
         out += `<rect x="${lp.x - bw / 2}" y="${ly - 10}" width="${bw}" height="20" rx="4" fill="#FFFFFF" stroke="${r.lus ? k.lus : '#D4D4D0'}"${r.lus ? ' stroke-dasharray="3 2"' : ''}/>`;
-        let tx = lp.x - bw / 2 + 6;
-        if (tekst) { out += `<text x="${tx}" y="${ly + 4}" font-size="11" font-weight="600" fill="${r.lus ? k.lus : trigger ? k.trigger : k.tekst}" font-family='${NP.FONT}'>${esc(tekst)}</text>`; tx += b1 + 10; }
-        if (wachtTekst) out += `<text x="${tx}" y="${ly + 4}" font-size="11" font-style="italic" fill="${k.wacht}" font-family='${NP.FONT}'>${esc(wachtTekst)}</text>`;
+        out += `<text x="${lp.x}" y="${ly + 4}" text-anchor="middle" font-size="11" font-weight="600" fill="${r.lus ? k.lus : trigger ? k.trigger : k.tekst}" font-family='${NP.FONT}'>${esc(tekst)}</text>`;
       }
       out += '</g>';
     }
@@ -193,7 +190,7 @@
   function tekenGebeurtenis(a, c, opts, k) {
     const sel = opts.sel && opts.sel.has(a.id);
     const kritiek = c && c.kritiek;
-    const cx = EW / 2, cy = EW / 2;
+    const cx = EW / 2, cy = ECY;
     let out = `<g class="knoop gebeurtenis" data-id="${esc(a.id)}" transform="translate(${a.x} ${a.y})">`;
     out += `<title>${esc(a.id + ' · ' + NP.SOORT_NAMEN[a.soort] + ' · ' + (a.naam || ''))}</title>`;
     if (sel) out += `<circle cx="${cx}" cy="${cy}" r="${ER + 7}" fill="rgba(29,78,216,.15)"/>`;
@@ -207,12 +204,13 @@
     out += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="15" font-weight="700" fill="${kritiek ? k.kritiekTekst : k.tekst}" font-family='${NP.FONT}'>${esc(moment)}</text>`;
     const regels = afbreken(a.naam || '(naamloos)', EW + 110, '600 12px ' + NP.FONT, 2);
     regels.forEach((rg, i) => {
-      out += `<text x="${cx}" y="${EW + 14 + i * 14}" text-anchor="middle" font-size="12" font-weight="600" fill="${k.tekst}" font-family='${NP.FONT}'>${esc(rg)}</text>`;
+      out += `<text x="${cx}" y="${cy + ER + 16 + i * 14}" text-anchor="middle" font-size="12" font-weight="600" fill="${k.tekst}" font-family='${NP.FONT}'>${esc(rg)}</text>`;
     });
     const info = [];
     if (a.soort !== 'eind' && a.nietVoor !== null && a.nietVoor !== undefined && a.nietVoor !== '') info.push('niet vóór ' + NP.fmt(Number(a.nietVoor)));
-    if (c && a.soort !== 'eind') info.push(kritiek ? 'bepalend' : 'uiterlijk ' + NP.fmt(c.ls));
-    if (info.length) out += `<text x="${cx}" y="${EW + 16 + regels.length * 14}" text-anchor="middle" font-size="10.5" fill="${kritiek ? k.kritiekTekst : k.zacht}" font-family='${NP.FONT}'>${esc(info.join(' · '))}</text>`;
+    if (c && a.soort === 'tussen') info.push(kritiek ? 'bepalend' : 'uiterlijk ' + NP.fmt(c.ls));
+    if (c && a.soort === 'start' && !kritiek) info.push('uiterlijk ' + NP.fmt(c.ls));
+    if (info.length) out += `<text x="${cx}" y="${cy + ER + 18 + regels.length * 14}" text-anchor="middle" font-size="10.5" fill="${kritiek ? k.kritiekTekst : k.zacht}" font-family='${NP.FONT}'>${esc(info.join(' · '))}</text>`;
     if (opts.scherm) {
       if (a.soort !== 'start') out += `<circle class="poort" data-id="${esc(a.id)}" data-poort="start" cx="${cx - ER}" cy="${cy}" r="7" fill="#FFFFFF" stroke="${k.rand}" stroke-width="1.5"><title>Ingang</title></circle>`;
       if (a.soort !== 'eind') out += `<circle class="poort" data-id="${esc(a.id)}" data-poort="einde" cx="${cx + ER}" cy="${cy}" r="7" fill="#FFFFFF" stroke="${k.rand}" stroke-width="1.5"><title>Trigger: sleep naar een activiteit</title></circle>`;

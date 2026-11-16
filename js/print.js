@@ -89,8 +89,7 @@
     return '<span>VS = vroegste start · DL = doorlooptijd · VE = vroegste einde · LS = laatste start · TS = totale speling · LE = laatste einde</span>' +
       '<span><svg width="9mm" height="2mm" viewBox="0 0 36 8"><line x1="0" y1="4" x2="36" y2="4" stroke="#B42318" stroke-width="2.5"/></svg> kritiek</span>' +
       '<span><svg width="9mm" height="2mm" viewBox="0 0 36 8"><line x1="0" y1="4" x2="36" y2="4" stroke="#7C3AED" stroke-width="2" stroke-dasharray="6 4"/></svg> lus (niet gerekend)</span>' +
-      '<span><svg width="3mm" height="3mm" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#E1F5EE" stroke="#0F6E56"/></svg> gebeurtenis / trigger</span>' +
-      '<span><em>wacht n</em> = de opvolger wacht nog n dagen op andere input</span>';
+      '<span><svg width="3mm" height="3mm" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#E1F5EE" stroke="#0F6E56"/></svg> gebeurtenis / trigger</span>';
   }
 
   function paginakaart(ind, hier) {

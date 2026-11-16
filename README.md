@@ -30,7 +30,7 @@ Voor Excel heeft de tool de bibliotheek SheetJS nodig. Die wordt via internet ge
 | Tabblad | Kolommen |
 |---|---|
 | Activiteiten | ID, Soort (activiteit/start/tussentijds/eind), Naam, Rol, Doorlooptijd, Niet vóór, Notitie · *grijs (alleen om te lezen):* Vroegste start, Vroegste einde, Laatste start, Laatste einde, Totale speling, Kritiek |
-| Relaties | Van, Naar, Type (FS/SS/FF/SF), Tijdsverschil, Aangrijpingspunt (begin/tijdens/einde), Na, Na-eenheid (dagen/%), Lus (ja/nee) · *grijs:* Wachttijd |
+| Relaties | Van, Naar, Type (FS/SS/FF/SF), Tijdsverschil, Aangrijpingspunt (begin/tijdens/einde), Na, Na-eenheid (dagen/%), Lus (ja/nee) |
 | Project | Naam, Tijdseenheid, Startdatum, Bestandsversie, Gemaakt met |
 | _indeling | *verborgen:* ID, X, Y (plek op het canvas) |
 
@@ -39,6 +39,15 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 ---
 
 ## Wijzigingen per versie
+
+### v0.3 (16-11-2026)
+- Het label *wacht n* op relaties is weg (ook het vinkje *Wachttijd*, de Excel-kolom en de regel in de legenda). Hoe lang iets kan wachten, lees je af aan vroegste/laatste tijden en de speling in het blok.
+- Gebeurtenissen liggen nu met hun midden op dezelfde hoogte als de poorten van activiteiten: op dezelfde rij loopt een pijl van of naar een gebeurtenis kaarsrecht.
+- Een trigger *aan het begin* loopt naar de startpoort van de activiteit en een trigger *aan het einde* naar de eindpoort; alleen *tijdens* komt van boven op het blok binnen. De pijl loopt niet meer door het naamlabel van de gebeurtenis.
+- Een start- of eindgebeurtenis springt bij de eerste relatie vanzelf op één lijn met de activiteit.
+- Bij een startgebeurtenis staat niet meer *bepalend*; alleen *niet vóór* en (als er speling is) *uiterlijk*.
+- Bestanden en tussentijds bewaard werk uit v0.2 worden automatisch omgezet naar de nieuwe plek van gebeurtenissen.
+
 
 ### v0.2 (16-11-2026)
 

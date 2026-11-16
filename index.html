@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Netwerkplanner</title>
-<link rel="stylesheet" href="css/style.css?v=0.2">
+<link rel="stylesheet" href="css/style.css?v=0.3">
 </head>
 <body>
 <div id="app">
@@ -25,7 +25,6 @@
     <span class="vul"></span>
     <label class="check"><input type="checkbox" id="chkRaster" checked> Raster</label>
     <label class="check"><input type="checkbox" id="chkKritiek" checked> Kritiek pad</label>
-    <label class="check" title="Toon op pijlen hoe lang een activiteit nog wacht op andere input"><input type="checkbox" id="chkWacht" checked> Wachttijd</label>
     <button id="btnUndo" title="Ongedaan maken (Ctrl+Z)">↶</button>
     <button id="btnRedo" title="Opnieuw (Ctrl+Y)">↷</button>
     <button id="btnHelp" title="Uitleg en sneltoetsen">Help</button>
@@ -111,7 +110,7 @@
     </div>
     <p class="klein" id="relUitleg"></p>
     <label class="veld"><span>Tijdsverschil (<span class="eenheid">werkdagen</span>)</span><input type="number" id="relVerschil" step="0.5"></label>
-    <p class="klein">Positief = wachttijd · negatief = overlap.</p>
+    <p class="klein">Positief = vertraging (wachttijd) · negatief = overlap.</p>
     <label class="check lus"><input type="checkbox" id="relLus"> <span><strong>Terugkoppeling (lus)</strong>: stippellijn, telt niet mee in de berekening</span></label>
     <p class="fout" id="relFout" hidden></p>
     <div class="knoppen">
@@ -202,11 +201,11 @@
 <script>
   if (!window.XLSX) document.write('<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"><\/script>');
 </script>
-<script src="js/model.js?v=0.2"></script>
-<script src="js/render.js?v=0.2"></script>
-<script src="js/excel.js?v=0.2"></script>
-<script src="js/print.js?v=0.2"></script>
-<script src="js/help.js?v=0.2"></script>
-<script src="js/app.js?v=0.2"></script>
+<script src="js/model.js?v=0.3"></script>
+<script src="js/render.js?v=0.3"></script>
+<script src="js/excel.js?v=0.3"></script>
+<script src="js/print.js?v=0.3"></script>
+<script src="js/help.js?v=0.3"></script>
+<script src="js/app.js?v=0.3"></script>
 </body>
 </html>

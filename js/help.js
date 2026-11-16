@@ -51,7 +51,7 @@
 <tr><td>Tussentijdse gebeurtenis</td><td>dubbele cirkel</td><td>Een moment van buiten waar een activiteit op wacht, met een <em>niet vóór</em>-dag.</td></tr>
 <tr><td>Eindgebeurtenis</td><td>dikke cirkel</td><td>Het resultaat is er.</td></tr>
 </table>
-<p>Sleep van het rechter rondje van een gebeurtenis naar een activiteit. Waar je loslaat, bepaalt het <strong>aangrijpingspunt</strong>:</p>
+<p>Sleep van het rechter rondje van een gebeurtenis naar een activiteit. Waar je loslaat, bepaalt het <strong>aangrijpingspunt</strong>. Bij <em>begin</em> loopt de pijl naar de startpoort, bij <em>einde</em> naar de eindpoort, bij <em>tijdens</em> naar de bovenkant van het blok. Het midden van een gebeurtenis ligt op dezelfde hoogte als de poorten van een activiteit; zet je ze op dezelfde rij, dan loopt de pijl recht. Een start- of eindgebeurtenis springt bij de eerste relatie vanzelf op één lijn met de activiteit.</p>
 <table>
 <tr><th>Loslaten</th><th>Aangrijpingspunt</th><th>Regel</th></tr>
 <tr><td>links op het blok</td><td>Begin</td><td>de activiteit start niet vóór de gebeurtenis</td></tr>
@@ -60,9 +60,6 @@
 </table>
 <p>Dubbelklik op de groene pijl om het aangrijpingspunt te wijzigen; bij <em>tijdens</em> kies je dagen of een percentage van de doorlooptijd. Een streepje over het blok laat zien waar de trigger aangrijpt.</p>
 <p>Onder de gebeurtenis staat <em>uiterlijk dag n</em>: het laatste moment waarop de gebeurtenis mag plaatsvinden zonder dat het project uitloopt. Staat er <em>bepalend</em> (rood), dan bepaalt de gebeurtenis het kritieke pad.</p>
-
-<h3>Wachttijd</h3>
-<p>Krijgt een activiteit haar input van een voorganger eerder dan nodig (bijvoorbeeld omdat ze ook nog op een besluit wacht), dan staat op die pijl <em>wacht n</em>: zoveel dagen ligt die input klaar. Zet het uit met het vinkje <em>Wachttijd</em> in de werkbalk.</p>
 
 <h3>Lussen (terugkoppelingen)</h3>
 <p>De tool herkent rework zelf: verbind je een activiteit met een <em>eerdere</em> activiteit (de relatie sluit een kring), dan wordt het automatisch een <strong>lus</strong>: een paarse stippellijn. Tijdens het slepen zie je dat al aan de paarse pijl met het label <em>lus: rework</em>. Een lus is zichtbaar en wordt opgeslagen, maar telt <strong>niet</strong> mee in de berekening. In het relatievenster kun je zelf kiezen welke pijl van een kring de lus is. Een lus is ook de basis voor de latere koppeling met de DSM (terugkoppeling boven de diagonaal).</p>
@@ -84,7 +81,7 @@
 <p>Eén project is één .xlsx-bestand met de tabbladen:</p>
 <ul>
 <li><strong>Activiteiten</strong>: ID, Soort (activiteit, start, tussentijds, eind), Naam, Rol, Doorlooptijd, Niet vóór, Notitie. De grijze kolommen (Vroegste start t/m Kritiek) zet de tool erbij om te lezen; bij openen worden ze genegeerd en opnieuw berekend.</li>
-<li><strong>Relaties</strong>: Van (ID), Naar (ID), Type (FS/SS/FF/SF), Tijdsverschil, Aangrijpingspunt (begin/tijdens/einde, alleen voor triggers), Na, Na-eenheid (dagen of %), Lus (ja/nee). Wachttijd is een grijze rekenkolom.</li>
+<li><strong>Relaties</strong>: Van (ID), Naar (ID), Type (FS/SS/FF/SF), Tijdsverschil, Aangrijpingspunt (begin/tijdens/einde, alleen voor triggers), Na, Na-eenheid (dagen of %), Lus (ja/nee).</li>
 <li><strong>Project</strong>: naam, tijdseenheid, startdatum.</li>
 <li><strong>_indeling</strong> (verborgen): waar elk blok op het canvas staat. Ontbreekt een activiteit daar, dan plaatst de tool het blok zelf.</li>
 </ul>

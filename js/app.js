@@ -61,7 +61,7 @@
   function autosave() {
     clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(() => {
-      try { localStorage.setItem(OPSLAG_SLEUTEL, JSON.stringify({ p: S.p, bestandsnaam: S.bestandsnaam, vuil: S.vuil, tijd: Date.now() })); } catch (e) { /* opslag niet beschikbaar */ }
+      try { localStorage.setItem(OPSLAG_SLEUTEL, JSON.stringify({ p: S.p, versie: NP.VERSIE, bestandsnaam: S.bestandsnaam, vuil: S.vuil, tijd: Date.now() })); } catch (e) { /* opslag niet beschikbaar */ }
     }, 400);
   }
 
@@ -115,7 +115,7 @@
     S.reken = NP.bereken(S.p);
     const toonKritiek = $('chkKritiek').checked;
     const reken = toonKritiek ? S.reken : Object.assign({}, S.reken, { drijvend: new Set(), per: kopieZonderKritiek(S.reken.per) });
-    const opts = { reken, sel: S.sel, selRel: S.selRel, scherm: true, wacht: $('chkWacht').checked };
+    const opts = { reken, sel: S.sel, selRel: S.selRel, scherm: true };
     $('defs').innerHTML = NP.defs(NP.kleuren(false));
     $('laagRel').innerHTML = NP.tekenRelaties(S.p, opts);
     $('laagKnoop').innerHTML = NP.tekenKnopen(S.p, opts);
@@ -191,9 +191,6 @@
     const el = $('inspecteur');
     if (el.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) {
       // tijdens typen niet het hele paneel vervangen; alleen rekenwaarden bijwerken
-      const wi = el.querySelector('#relWachtInfo');
-      const rr = S.p.relaties.find(r => r.id === S.selRel);
-      if (wi && rr) wi.innerHTML = wachtInfo(rr);
       const vak = el.querySelector('.rekenvak');
       if (vak && S.sel.size === 1) { const id = [...S.sel][0]; vak.outerHTML = NP.isGebeurtenis(NP.getAct(S.p, id)) ? rekenvakGeb(id) : rekenvak(id); }
       return;
@@ -217,8 +214,6 @@
     let lab = `${r.type}${v ? (v > 0 ? ' +' : ' −') + NP.fmt(Math.abs(v)) : ' +0'}`;
     if (NP.isTriggerRelatie(S.p, r)) lab = (r.aangrijp === 'einde' ? 'trigger einde' : r.aangrijp === 'tijdens' ? 'trigger na ' + NP.fmt(Number(r.na) || 0) + (r.naEenheid === '%' ? '%' : ' d') : 'trigger begin') + (v ? (v > 0 ? ' +' : ' −') + NP.fmt(Math.abs(v)) : '');
     if (r.lus) lab += ' ↺';
-    const w = S.reken && S.reken.wacht ? S.reken.wacht[r.id] : 0;
-    if (!r.lus && w > 0) lab += ` · wacht ${NP.fmt(w)}`;
     return `<button class="relrij${r.lus ? ' lus' : ''}" data-relopen="${NP.esc(r.id)}" title="${richting}: klik om te bewerken"><span>${NP.esc(b ? b.naam || b.id : andereId)}</span><b>${lab}</b></button>`;
   }
   function paneelActiviteit(id) {
@@ -282,18 +277,11 @@
   function soortSelect(a) {
     return `<label class="veld">Soort<select data-veld="soort">${NP.SOORTEN.map(x => `<option value="${x}"${a.soort === x ? ' selected' : ''}>${NP.SOORT_NAMEN[x]}</option>`).join('')}</select></label>`;
   }
-  function wachtInfo(r) {
-    const w = S.reken && S.reken.wacht ? S.reken.wacht[r.id] : 0;
-    const eh = NP.esc(S.p.eenheid || 'werkdagen');
-    if (r.lus) return 'Deze relatie telt niet mee in de berekening.';
-    return w > 0 ? `B wacht nog <strong>${NP.fmt(w)}</strong> ${eh} op deze input; andere input bepaalt de start.` : 'Deze relatie bepaalt (mede) wanneer B kan beginnen.';
-  }
   function paneelRelatie(id) {
     const r = S.p.relaties.find(x => x.id === id);
     const A = NP.getAct(S.p, r.van), B = NP.getAct(S.p, r.naar);
     const trig = NP.isTriggerRelatie(S.p, r);
     const eh = NP.esc(S.p.eenheid || 'werkdagen');
-    const w = S.reken && S.reken.wacht ? S.reken.wacht[r.id] : 0;
     const opt = (v, t, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${t}</option>`;
     return `<div class="paneelkop">Relatie ${NP.esc(r.id)}</div>
       <p class="klein">Van (A)<br><strong>${NP.esc(A.id + ' · ' + (A.naam || ''))}</strong></p>
@@ -302,9 +290,9 @@
         ${r.aangrijp === 'tijdens' ? `<div class="twee"><label class="veld">Na<input data-relveld="na" type="number" min="0" step="0.5" value="${NP.esc(r.na)}"></label><label class="veld">Eenheid<select data-relveld="naEenheid">${opt('dagen', 'dagen', r.naEenheid)}${opt('%', '%', r.naEenheid)}</select></label></div>` : ''}`
         : NP.isGebeurtenis(B) ? '' : `<label class="veld">Type<select data-relveld="type">${NP.TYPES.map(t => opt(t, t + ' · ' + NP.TYPE_NAMEN[t], r.type)).join('')}</select></label>`}
       <label class="veld"><span>Vertraging / tijdsverschil (${eh})</span><input data-relveld="verschil" type="number" step="0.5" value="${NP.esc(Number(r.verschil) || 0)}"></label>
-      <p class="klein">Positief = wachttijd · negatief = overlap.</p>
+      <p class="klein">Positief = vertraging (wachttijd) · negatief = overlap.</p>
       <label class="check lus"><input type="checkbox" data-relveld="lus"${r.lus ? ' checked' : ''}> <span><strong>Lus</strong>: stippellijn, telt niet mee</span></label>
-      <p class="klein" id="relWachtInfo">${wachtInfo(r)}</p>
+      ${r.lus ? '<p class="klein">Deze relatie telt niet mee in de berekening.</p>' : ''}
       <div class="knoppenrij"><button data-relopen="${NP.esc(r.id)}">Venster openen</button><button id="btnVerwijderRel" class="gevaar">Relatie verwijderen</button></div>`;
   }
   function paneelMeer() {
@@ -368,6 +356,10 @@
     bewaarStap();
     const lus = NP.maaktKring(S.p, van, naar);
     const r = Object.assign({ id: NP.volgendId(S.p.relaties, 'R'), van, naar, type, verschil: verschil || 0, lus, aangrijp: 'begin', na: 0, naEenheid: 'dagen' }, extra || {});
+    // gebeurtenis netjes op één lijn zetten met de activiteit als het de eerste relatie is
+    const A = NP.getAct(S.p, van), B = NP.getAct(S.p, naar);
+    if (B && B.soort === 'eind' && !S.p.relaties.some(x => x.naar === naar)) B.y = A.y;
+    if (A && A.soort === 'start' && !S.p.relaties.some(x => x.van === van) && r.aangrijp !== 'tijdens') A.y = B.y;
     S.p.relaties.push(r);
     if (lus) toast('Rework gedetecteerd: deze relatie gaat terug naar een eerdere activiteit en is als lus (stippellijn) aangegeven. Ze telt niet mee in de berekening.');
     gewijzigd();
@@ -842,7 +834,7 @@
         dy = Math.round((l.y + dy) / RASTER) * RASTER - l.y;
       }
       for (const [id, p0] of S.m.pos) { const a = NP.getAct(S.p, id); a.x = p0.x + dx; a.y = p0.y + dy; }
-      $('laagRel').innerHTML = NP.tekenRelaties(S.p, { reken: S.reken, sel: S.sel, selRel: S.selRel, scherm: true, wacht: $('chkWacht').checked });
+      $('laagRel').innerHTML = NP.tekenRelaties(S.p, { reken: S.reken, sel: S.sel, selRel: S.selRel, scherm: true });
       $('laagKnoop').innerHTML = NP.tekenKnopen(S.p, { reken: S.reken, sel: S.sel, selRel: S.selRel, scherm: true });
       tekenMinikaart();
     } else if (S.modus === 'verbinden') {
@@ -1065,7 +1057,6 @@
   $('btnNieuweAct').onclick = () => nieuweActiviteit();
   $('btnNieuweAct2').onclick = () => nieuweActiviteit();
   $('btnNieuweGeb').onclick = () => nieuweKnoop('tussen');
-  $('chkWacht').onchange = teken;
   $('btnOrdenen').onclick = () => { if (!S.p.activiteiten.length) return; bewaarStap(); ordenen(); gewijzigd(); passend(); };
   $('btnPassend').onclick = passend;
   $('btnUndo').onclick = ongedaan;
@@ -1116,6 +1107,7 @@
     const opgeslagen = JSON.parse(localStorage.getItem(OPSLAG_SLEUTEL) || 'null');
     if (opgeslagen && opgeslagen.p && opgeslagen.p.activiteiten) {
       S.p = NP.normaliseer(opgeslagen.p);
+      if (!opgeslagen.versie || opgeslagen.versie === '0.2') NP.oudeGebeurtenisPlek(S.p);
       S.bestandsnaam = opgeslagen.bestandsnaam || null;
       S.vuil = !!opgeslagen.vuil;
       if (S.p.activiteiten.length) setTimeout(() => toast('Je laatste werk is hersteld (tussentijds bewaard in deze browser).'), 300);
