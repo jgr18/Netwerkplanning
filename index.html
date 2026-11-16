@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Netwerkplanner</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header class="balk">
+    <div class="merk">Netwerkplanner <span class="versie" id="versieLabel"></span></div>
+    <input id="projectNaam" class="projectnaam" type="text" aria-label="Projectnaam" title="Projectnaam">
+    <span class="scheid"></span>
+    <button id="btnNieuw" title="Nieuw project (Ctrl+N)">Nieuw</button>
+    <button id="btnOpen" title="Openen uit Excel (Ctrl+O)">Openen uit Excel</button>
+    <button id="btnOpslaan" class="primair" title="Opslaan als Excel (Ctrl+S)">Opslaan (.xlsx)</button>
+    <button id="btnOpslaanAls" title="Opslaan als… (Ctrl+Shift+S)">Opslaan als…</button>
+    <button id="btnPrint" title="Afdrukken of PDF (Ctrl+P)">Afdrukken / PDF</button>
+    <span class="scheid"></span>
+    <button id="btnNieuweAct" title="Nieuwe activiteit (of dubbelklik op het canvas)">+ Activiteit</button>
+    <button id="btnOrdenen" title="Alle activiteiten automatisch ordenen">Automatisch ordenen</button>
+    <button id="btnPassend" title="Hele netwerk in beeld (F)">Passend in beeld</button>
+    <span class="vul"></span>
+    <label class="check"><input type="checkbox" id="chkRaster" checked> Raster</label>
+    <label class="check"><input type="checkbox" id="chkKritiek" checked> Kritiek pad</label>
+    <button id="btnUndo" title="Ongedaan maken (Ctrl+Z)">↶</button>
+    <button id="btnRedo" title="Opnieuw (Ctrl+Y)">↷</button>
+    <button id="btnHelp" title="Uitleg en sneltoetsen">Help</button>
+  </header>
+
+  <div class="midden">
+    <aside class="links">
+      <div class="paneelkop">Activiteiten</div>
+      <label class="veld">Zoeken<input id="zoek" type="text" placeholder="Naam, rol of ID"></label>
+      <div class="lijstkop"><span>ID</span><span>Naam</span><span title="Doorlooptijd">DL</span><span title="Totale speling">TS</span></div>
+      <div id="lijst" class="lijst"></div>
+      <button id="btnNieuweAct2" class="streep">+ Activiteit toevoegen</button>
+    </aside>
+
+    <main id="doek" class="doek" tabindex="0" aria-label="Netwerk-canvas">
+      <svg id="svg" class="svg" xmlns="http://www.w3.org/2000/svg">
+        <g id="defs"></g>
+        <g id="wereld">
+          <g id="laagRel"></g>
+          <g id="laagKnoop"></g>
+          <g id="laagTijdelijk"></g>
+        </g>
+      </svg>
+      <div id="lasso" class="lasso" hidden></div>
+      <div id="uitlijnbalk" class="uitlijnbalk" hidden>
+        <button data-align="links" title="Links uitlijnen">⇤</button>
+        <button data-align="hmidden" title="Horizontaal centreren">↔︎</button>
+        <button data-align="rechts" title="Rechts uitlijnen">⇥</button>
+        <span></span>
+        <button data-align="boven" title="Boven uitlijnen">⤒</button>
+        <button data-align="vmidden" title="Verticaal centreren">↕︎</button>
+        <button data-align="onder" title="Onder uitlijnen">⤓</button>
+        <span></span>
+        <button data-align="hverdelen" title="Horizontaal gelijk verdelen">⋯</button>
+        <button data-align="vverdelen" title="Verticaal gelijk verdelen">⋮</button>
+      </div>
+      <div class="hint" id="hint">Dubbelklik = nieuwe activiteit · sleep van ○ naar ○ = relatie · spatie + slepen of middelste muisknop = schuiven · Ctrl + scroll = zoomen</div>
+      <div id="leeg" class="leeg" hidden>
+        <p><strong>Nog geen activiteiten.</strong></p>
+        <p>Dubbelklik op het canvas, klik op <em>+ Activiteit</em>, open een Excel-bestand of</p>
+        <button id="btnVoorbeeld">Voorbeeld laden</button>
+      </div>
+      <div class="minikaart" id="minikaart" title="Minikaart: klik om ernaartoe te gaan"><svg id="miniSvg"></svg></div>
+      <div class="zoom">
+        <button id="btnUit" aria-label="Uitzoomen">−</button>
+        <span id="zoomLabel">100%</span>
+        <button id="btnIn" aria-label="Inzoomen">+</button>
+      </div>
+    </main>
+
+    <aside class="rechts" id="inspecteur"></aside>
+  </div>
+
+  <footer class="status" id="status"></footer>
+</div>
+
+<!-- Relatie bewerken -->
+<dialog id="dlgRel" class="venster">
+  <form method="dialog" id="formRel">
+    <h2>Relatie bewerken</h2>
+    <p class="klein">Van (A)<br><strong id="relVan"></strong></p>
+    <p class="klein">Naar (B)<br><strong id="relNaar"></strong></p>
+    <fieldset class="segment" id="relTypes">
+      <legend>Type</legend>
+      <label><input type="radio" name="type" value="FS"><span>FS</span></label>
+      <label><input type="radio" name="type" value="SS"><span>SS</span></label>
+      <label><input type="radio" name="type" value="FF"><span>FF</span></label>
+      <label><input type="radio" name="type" value="SF"><span>SF</span></label>
+    </fieldset>
+    <p class="klein" id="relUitleg"></p>
+    <label class="veld"><span>Tijdsverschil (<span class="eenheid">werkdagen</span>)</span><input type="number" id="relVerschil" step="0.5"></label>
+    <p class="klein">Positief = wachttijd · negatief = overlap.</p>
+    <label class="check lus"><input type="checkbox" id="relLus"> <span><strong>Terugkoppeling (lus)</strong>: stippellijn, telt niet mee in de berekening</span></label>
+    <p class="fout" id="relFout" hidden></p>
+    <div class="knoppen">
+      <button type="button" id="relWeg" class="gevaar">Verwijderen</button>
+      <span class="vul"></span>
+      <button value="annuleren" formnovalidate>Annuleren</button>
+      <button type="button" id="relOk" class="primair">Opslaan</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Afdrukken -->
+<dialog id="dlgPrint" class="venster breed">
+  <form method="dialog">
+    <h2>Afdrukken of PDF</h2>
+    <div class="twee">
+      <label class="veld">Papier<select id="prPapier"><option>A3</option><option>A4</option><option>A2</option></select></label>
+      <label class="veld">Richting<select id="prRichting"><option value="liggend">Liggend</option><option value="staand">Staand</option></select></label>
+    </div>
+    <fieldset class="kolom">
+      <legend>Schaal</legend>
+      <label class="check"><input type="radio" name="prSchaal" value="leesbaar" checked> <span><strong>Leesbaar</strong>: namen minimaal 9 pt; het aantal pagina’s volgt daaruit</span></label>
+      <label class="check"><input type="radio" name="prSchaal" value="een"> <span>Op 1 pagina (melding als de tekst kleiner wordt dan 7 pt)</span></label>
+      <label class="check"><input type="radio" name="prSchaal" value="vast"> <span>Vast: <input type="number" id="prPct" value="100" min="20" max="400" step="5" aria-label="Schaal in procent"> % (100% = leesbaar)</span></label>
+    </fieldset>
+    <label class="veld">Overlap tussen pagina’s (mm)<input type="number" id="prOverlap" value="15" min="0" max="60"></label>
+    <div class="kolom">
+      <label class="check"><input type="checkbox" id="prNaden" checked> Naden in witruimte leggen (geen blok doorsnijden)</label>
+      <label class="check"><input type="checkbox" id="prOverzicht" checked> Overzichtspagina vooraf (bij meer dan 1 pagina)</label>
+      <label class="check"><input type="checkbox" id="prLegenda" checked> Legenda onderaan</label>
+      <label class="check"><input type="checkbox" id="prZw"> Zwart-wit (kritiek = dikke lijn)</label>
+    </div>
+    <p class="samenvatting" id="prSamenvatting"></p>
+    <p class="klein">Voor een PDF kies je in het afdrukvenster van de browser <strong>Opslaan als PDF</strong>. Zet daar marges op <em>Geen</em> en vink <em>Achtergrondafbeeldingen</em> aan als je kleuren mist.</p>
+    <div class="knoppen">
+      <span class="vul"></span>
+      <button value="annuleren">Annuleren</button>
+      <button type="button" id="prGo" class="primair">Afdrukken…</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Meldingen na openen -->
+<dialog id="dlgMelding" class="venster">
+  <form method="dialog">
+    <h2 id="meldTitel">Bestand ingelezen</h2>
+    <div id="meldTekst"></div>
+    <div class="knoppen"><span class="vul"></span><button class="primair">Doorgaan</button></div>
+  </form>
+</dialog>
+
+<!-- Help -->
+<dialog id="dlgHelp" class="venster help">
+  <form method="dialog">
+    <div id="helpInhoud"></div>
+    <div class="knoppen"><span class="vul"></span><button class="primair">Sluiten</button></div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+<input type="file" id="bestandInvoer" accept=".xlsx,.xls" hidden>
+<div id="afdruk"></div>
+
+<!-- SheetJS: eerst lokale kopie (lib/), anders via internet -->
+<script src="lib/xlsx.full.min.js"></script>
+<script>
+  if (!window.XLSX) document.write('<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"><\/script>');
+</script>
+<script src="js/model.js"></script>
+<script src="js/render.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/print.js"></script>
+<script src="js/help.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

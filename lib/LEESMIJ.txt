@@ -1,0 +1,14 @@
+Map voor een lokale kopie van de Excel-bibliotheek (optioneel)
+
+De Netwerkplanner gebruikt SheetJS om Excel-bestanden te lezen en te schrijven.
+Standaard wordt die via internet geladen:
+https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js
+
+Wil je dat de tool ook zonder internet werkt (of niet afhankelijk is van die website)?
+Download dan dat bestand en zet het in deze map met de naam:
+
+    xlsx.full.min.js
+
+De tool kijkt eerst hier en pas daarna op internet.
+Zolang het bestand hier niet staat, zie je in de console van de browser één melding
+"Failed to load resource" voor lib/xlsx.full.min.js. Die is onschuldig.
