@@ -1,14 +1,20 @@
-/* Netwerkplanner – tekenen van knopen en pijlen als SVG (zelfde code voor scherm en afdruk) */
+/* Netwerkplanner – tekenen van knopen, gebeurtenissen en pijlen als SVG (zelfde code voor scherm en afdruk) */
 (function () {
   'use strict';
   const NP = (window.NP = window.NP || {});
 
   const W = 240, H = 128, KOP = 56, CEL = 36;
+  const EW = 64, ER = 26; // gebeurtenis: vak 64×64, cirkel met straal 26
   NP.KNOOP = { W, H, KOP, CEL, POORT_Y: 64 };
+  NP.GEBEURTENIS = { W: EW, H: EW, R: ER };
   NP.FONT = '"Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif';
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   NP.esc = esc;
+
+  NP.maat = a => NP.isGebeurtenis(a) ? { w: EW, h: EW } : { w: W, h: H };
+  /* Ruimte inclusief het naamlabel onder een gebeurtenis (voor selectie, afdruk en omhullende) */
+  NP.vlak = a => NP.isGebeurtenis(a) ? { x: a.x - 58, y: a.y, w: EW + 116, h: EW + 46 } : { x: a.x, y: a.y, w: W, h: H };
 
   let ctx = null;
   function breedte(tekst, font) {
@@ -16,13 +22,11 @@
     ctx.font = font;
     return ctx.measureText(tekst).width;
   }
-  /* Tekst afbreken over maximaal n regels binnen maxW; laatste regel krijgt … als het niet past */
   function inkorten(r, maxW, font) {
     if (breedte(r, font) <= maxW) return r;
     while (r.length && breedte(r + '…', font) > maxW) r = r.slice(0, -1);
     return r + '…';
   }
-  /* Tekst afbreken over maximaal n regels binnen maxW; wat niet past krijgt … */
   function afbreken(tekst, maxW, font, n) {
     const woorden = String(tekst || '').split(/\s+/).filter(Boolean);
     let regels = [], cur = '';
@@ -43,15 +47,53 @@
   }
 
   NP.poortPunt = function (a, poort) {
+    if (NP.isGebeurtenis(a)) return { x: a.x + EW / 2 + (poort === 'start' ? -ER : ER), y: a.y + EW / 2 };
     return { x: a.x + (poort === 'start' ? 0 : W), y: a.y + NP.KNOOP.POORT_Y };
   };
 
-  /* Orthogonale route tussen twee poorten */
+  /* x-positie (wereld) waar een trigger bovenop activiteit B aangrijpt */
+  NP.aangrijpX = function (p, r, B) {
+    const D = Math.max(0, Number(B.duur) || 0);
+    const d = NP.aangrijpDagen(p, r);
+    const f = D > 0 ? d / D : (r.aangrijp === 'einde' ? 1 : r.aangrijp === 'tijdens' ? 0.5 : 0);
+    return B.x + 14 + f * (W - 28);
+  };
+
+  function schoon(pts) {
+    const s = [pts[0]];
+    for (let i = 1; i < pts.length; i++) {
+      const v = s[s.length - 1];
+      if (Math.abs(v.x - pts[i].x) > 0.1 || Math.abs(v.y - pts[i].y) > 0.1) s.push(pts[i]);
+    }
+    return s;
+  }
+
+  /* Orthogonale route van een relatie */
+  NP.routeRel = function (p, r) {
+    const A = NP.getAct(p, r.van), B = NP.getAct(p, r.naar);
+    if (NP.isGebeurtenis(A) && !NP.isGebeurtenis(B)) {
+      // trigger: van de gebeurtenis naar de bovenkant van het blok, op het aangrijpingspunt
+      const cx = A.x + EW / 2, cy = A.y + EW / 2;
+      const tx = NP.aangrijpX(p, r, B);
+      if (B.y - 26 > cy + ER + 6) {
+        const ym = B.y - 26;
+        const zx = cx + ER + 16;
+        return schoon([{ x: cx + ER, y: cy }, { x: zx, y: cy }, { x: zx, y: ym }, { x: tx, y: ym }, { x: tx, y: B.y }]);
+      }
+      const ym = Math.min(cy - ER, B.y) - 30;
+      return schoon([{ x: cx, y: cy - ER }, { x: cx, y: ym }, { x: tx, y: ym }, { x: tx, y: B.y }]);
+    }
+    return NP.route(A, B, r.type);
+  };
+
   NP.route = function (A, B, type) {
     const pp = NP.poortenUitType(type);
-    const s = NP.poortPunt(A, pp.van), t = NP.poortPunt(B, pp.naar);
-    const sd = pp.van === 'einde' ? 1 : -1;
-    const td = pp.naar === 'einde' ? 1 : -1;
+    const evA = NP.isGebeurtenis(A), evB = NP.isGebeurtenis(B);
+    const vanPoort = evA ? 'einde' : pp.van, naarPoort = evB ? 'start' : pp.naar;
+    const s = NP.poortPunt(A, vanPoort), t = NP.poortPunt(B, naarPoort);
+    const sd = vanPoort === 'einde' ? 1 : -1;
+    const td = naarPoort === 'einde' ? 1 : -1;
+    const mA = NP.maat(A), mB = NP.maat(B);
     const G = 22;
     const s1x = s.x + sd * G, t1x = t.x + td * G;
     let pts;
@@ -63,73 +105,120 @@
       pts = [s, { x, y: s.y }, { x, y: t.y }, t];
     } else {
       let ym;
-      if (A.y + H + 30 <= B.y) ym = (A.y + H + B.y) / 2;
-      else if (B.y + H + 30 <= A.y) ym = (B.y + H + A.y) / 2;
-      else ym = Math.max(A.y, B.y) + H + 28;
+      if (A.y + mA.h + 30 <= B.y) ym = (A.y + mA.h + B.y) / 2;
+      else if (B.y + mB.h + 30 <= A.y) ym = (B.y + mB.h + A.y) / 2;
+      else ym = Math.max(A.y + mA.h, B.y + mB.h) + 28;
       pts = [s, { x: s1x, y: s.y }, { x: s1x, y: ym }, { x: t1x, y: ym }, { x: t1x, y: t.y }, t];
     }
-    // dubbele punten weg
-    const schoon = [pts[0]];
-    for (let i = 1; i < pts.length; i++) {
-      const v = schoon[schoon.length - 1];
-      if (Math.abs(v.x - pts[i].x) > 0.1 || Math.abs(v.y - pts[i].y) > 0.1) schoon.push(pts[i]);
-    }
-    return schoon;
+    return schoon(pts);
   };
 
-  function labelPunt(pts) {
-    // midden van het langste segment
-    let best = 0, bi = 0;
+  function langsteSegment(pts) {
+    let best = -1, bi = 0;
     for (let i = 0; i < pts.length - 1; i++) {
       const l = Math.abs(pts[i + 1].x - pts[i].x) + Math.abs(pts[i + 1].y - pts[i].y);
       if (l > best) { best = l; bi = i; }
     }
-    return { x: (pts[bi].x + pts[bi + 1].x) / 2, y: (pts[bi].y + pts[bi + 1].y) / 2 };
+    return { a: pts[bi], b: pts[bi + 1], l: best };
   }
 
   NP.kleuren = function (zw) {
     return zw
-      ? { kritiekKop: '#FFFFFF', kop: '#FFFFFF', kritiekTekst: '#000000', lijn: '#333333', kritiekLijn: '#000000', lus: '#555555', rand: '#000000', tekst: '#000000', zacht: '#333333', cel: '#999999' }
-      : { kritiekKop: '#FBE9E7', kop: '#EEF1F5', kritiekTekst: '#B42318', lijn: '#5F5F5B', kritiekLijn: '#B42318', lus: '#7C3AED', rand: '#6B6B66', tekst: '#1F1F1E', zacht: '#5F5F5B', cel: '#E4E4E0' };
+      ? { kritiekKop: '#FFFFFF', kop: '#FFFFFF', kritiekTekst: '#000000', lijn: '#333333', kritiekLijn: '#000000', lus: '#555555', rand: '#000000', tekst: '#000000', zacht: '#333333', cel: '#999999', gebFill: '#FFFFFF', gebRand: '#000000', gebKritiekFill: '#FFFFFF', trigger: '#000000', wacht: '#333333' }
+      : { kritiekKop: '#FBE9E7', kop: '#EEF1F5', kritiekTekst: '#B42318', lijn: '#5F5F5B', kritiekLijn: '#B42318', lus: '#7C3AED', rand: '#6B6B66', tekst: '#1F1F1E', zacht: '#5F5F5B', cel: '#E4E4E0', gebFill: '#E1F5EE', gebRand: '#0F6E56', gebKritiekFill: '#FBE9E7', trigger: '#0F6E56', wacht: '#5F5F5B' };
   };
 
   NP.defs = function (k) {
-    const m = (id, kleur) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${kleur}"/></marker>`;
-    return `<defs>${m('pijl-n', k.lijn)}${m('pijl-k', k.kritiekLijn)}${m('pijl-l', k.lus)}${m('pijl-s', '#1D4ED8')}</defs>`;
+    const m = (id, kleur) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${kleur}"/></marker>`;
+    return `<defs>${m('pijl-n', k.lijn)}${m('pijl-k', k.kritiekLijn)}${m('pijl-l', k.lus)}${m('pijl-s', '#1D4ED8')}${m('pijl-t', k.trigger)}</defs>`;
   };
 
-  /* opts: { reken, sel:Set, selRel, zw, scherm } */
+  /* opts: { reken, sel:Set, selRel, zw, scherm, wacht } */
   NP.tekenRelaties = function (p, opts) {
     const k = NP.kleuren(opts.zw);
     let out = '';
     for (const r of p.relaties) {
       const A = NP.getAct(p, r.van), B = NP.getAct(p, r.naar);
       if (!A || !B) continue;
-      const pts = NP.route(A, B, r.type);
+      const pts = NP.routeRel(p, r);
       const d = 'M' + pts.map(q => q.x + ' ' + q.y).join(' L');
-      const kritiek = !r.lus && opts.reken && opts.reken.drijvend.has(r.id);
+      const trigger = NP.isGebeurtenis(A) && !NP.isGebeurtenis(B);
+      const kritiek = !r.lus && opts.reken && opts.reken.drijvend && opts.reken.drijvend.has(r.id);
       const gekozen = opts.selRel === r.id;
-      let kleur = r.lus ? k.lus : kritiek ? k.kritiekLijn : k.lijn;
-      let marker = r.lus ? 'pijl-l' : kritiek ? 'pijl-k' : 'pijl-n';
+      let kleur = r.lus ? k.lus : kritiek ? k.kritiekLijn : trigger ? k.trigger : k.lijn;
+      let marker = r.lus ? 'pijl-l' : kritiek ? 'pijl-k' : trigger ? 'pijl-t' : 'pijl-n';
       if (gekozen) { kleur = '#1D4ED8'; marker = 'pijl-s'; }
       const dikte = kritiek ? (opts.zw ? 3 : 2.2) : 1.6;
       const streep = r.lus ? ' stroke-dasharray="7 5"' : '';
       out += `<g class="rel" data-rel="${esc(r.id)}">`;
       if (opts.scherm) out += `<path d="${d}" stroke="transparent" stroke-width="14" fill="none" class="rel-hit"/>`;
-      out += `<path d="${d}" stroke="${kleur}" stroke-width="${dikte}" fill="none"${streep} marker-end="url(#${marker})"/>`;
+      out += `<path d="${d}" stroke="${kleur}" stroke-width="${dikte}" fill="none"${streep} stroke-linejoin="round" marker-end="url(#${marker})"/>`;
+      // pijltje halverwege het langste stuk, zodat de richting overal zichtbaar is
+      const seg = langsteSegment(pts);
+      if (seg.l > 70) {
+        const mx = (seg.a.x + seg.b.x) / 2, my = (seg.a.y + seg.b.y) / 2;
+        const hoek = Math.atan2(seg.b.y - seg.a.y, seg.b.x - seg.a.x) * 180 / Math.PI;
+        out += `<path d="M-5 -4.5 L5 0 L-5 4.5 z" fill="${kleur}" transform="translate(${mx} ${my}) rotate(${hoek})"/>`;
+      }
+      // label
       const v = Number(r.verschil) || 0;
-      if (r.type !== 'FS' || v !== 0 || r.lus) {
-        let tekst = r.type + (v ? (v > 0 ? ' +' : ' −') + NP.fmt(Math.abs(v)) : '');
-        if (r.lus) tekst = '↺ ' + tekst + ' · lus';
-        const lp = labelPunt(pts);
-        const bw = breedte(tekst, '600 11px ' + NP.FONT) + 12;
-        out += `<rect x="${lp.x - bw / 2}" y="${lp.y - 10}" width="${bw}" height="20" rx="4" fill="#FFFFFF" stroke="${r.lus ? k.lus : '#D4D4D0'}"${r.lus ? ' stroke-dasharray="3 2"' : ''}/>`;
-        out += `<text x="${lp.x}" y="${lp.y + 4}" text-anchor="middle" font-size="11" font-weight="600" fill="${r.lus ? k.lus : k.tekst}" font-family='${NP.FONT}'>${esc(tekst)}</text>`;
+      const delen = [];
+      if (trigger) {
+        if (r.aangrijp === 'einde') delen.push('einde');
+        else if (r.aangrijp === 'tijdens') delen.push('na ' + NP.fmt(Number(r.na) || 0) + (r.naEenheid === '%' ? '%' : ' d'));
+        if (v) delen.push((v > 0 ? '+' : '−') + NP.fmt(Math.abs(v)));
+      } else if (r.type !== 'FS' || v !== 0) {
+        delen.push(r.type + (v ? (v > 0 ? ' +' : ' −') + NP.fmt(Math.abs(v)) : ''));
+      }
+      if (r.lus) delen.unshift('↺ lus');
+      const w = opts.wacht !== false && opts.reken && opts.reken.wacht ? opts.reken.wacht[r.id] : 0;
+      const tekst = delen.join(' · ');
+      const wachtTekst = !r.lus && w > 0 ? 'wacht ' + NP.fmt(w) : '';
+      if (tekst || wachtTekst) {
+        const lp = trigger ? { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y - 13 } : { x: (seg.a.x + seg.b.x) / 2, y: (seg.a.y + seg.b.y) / 2 };
+        const f1 = '600 11px ' + NP.FONT, f2 = 'italic 11px ' + NP.FONT;
+        const b1 = tekst ? breedte(tekst, f1) : 0, b2 = wachtTekst ? breedte(wachtTekst, f2) : 0;
+        const bw = b1 + b2 + (tekst && wachtTekst ? 10 : 0) + 12;
+        const ly = trigger ? lp.y : (seg.l > 70 && Math.abs(seg.a.y - seg.b.y) < 1 ? lp.y - 15 : lp.y);
+        out += `<rect x="${lp.x - bw / 2}" y="${ly - 10}" width="${bw}" height="20" rx="4" fill="#FFFFFF" stroke="${r.lus ? k.lus : '#D4D4D0'}"${r.lus ? ' stroke-dasharray="3 2"' : ''}/>`;
+        let tx = lp.x - bw / 2 + 6;
+        if (tekst) { out += `<text x="${tx}" y="${ly + 4}" font-size="11" font-weight="600" fill="${r.lus ? k.lus : trigger ? k.trigger : k.tekst}" font-family='${NP.FONT}'>${esc(tekst)}</text>`; tx += b1 + 10; }
+        if (wachtTekst) out += `<text x="${tx}" y="${ly + 4}" font-size="11" font-style="italic" fill="${k.wacht}" font-family='${NP.FONT}'>${esc(wachtTekst)}</text>`;
       }
       out += '</g>';
     }
     return out;
   };
+
+  function tekenGebeurtenis(a, c, opts, k) {
+    const sel = opts.sel && opts.sel.has(a.id);
+    const kritiek = c && c.kritiek;
+    const cx = EW / 2, cy = EW / 2;
+    let out = `<g class="knoop gebeurtenis" data-id="${esc(a.id)}" transform="translate(${a.x} ${a.y})">`;
+    out += `<title>${esc(a.id + ' · ' + NP.SOORT_NAMEN[a.soort] + ' · ' + (a.naam || ''))}</title>`;
+    if (sel) out += `<circle cx="${cx}" cy="${cy}" r="${ER + 7}" fill="rgba(29,78,216,.15)"/>`;
+    const rand = sel ? '#1D4ED8' : kritiek ? k.kritiekLijn : k.gebRand;
+    const fill = kritiek ? k.gebKritiekFill : k.gebFill;
+    const dikte = a.soort === 'eind' ? 4 : 1.6;
+    out += `<circle cx="${cx}" cy="${cy}" r="${ER}" fill="${fill}" stroke="${rand}" stroke-width="${sel ? 2.4 : dikte}"/>`;
+    if (a.soort === 'tussen') out += `<circle cx="${cx}" cy="${cy}" r="${ER - 5}" fill="none" stroke="${rand}" stroke-width="1.3"/>`;
+    const moment = c ? NP.fmt(c.vs) : '';
+    out += `<text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="9" fill="${k.zacht}" font-family='${NP.FONT}'>dag</text>`;
+    out += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="15" font-weight="700" fill="${kritiek ? k.kritiekTekst : k.tekst}" font-family='${NP.FONT}'>${esc(moment)}</text>`;
+    const regels = afbreken(a.naam || '(naamloos)', EW + 110, '600 12px ' + NP.FONT, 2);
+    regels.forEach((rg, i) => {
+      out += `<text x="${cx}" y="${EW + 14 + i * 14}" text-anchor="middle" font-size="12" font-weight="600" fill="${k.tekst}" font-family='${NP.FONT}'>${esc(rg)}</text>`;
+    });
+    const info = [];
+    if (a.soort !== 'eind' && a.nietVoor !== null && a.nietVoor !== undefined && a.nietVoor !== '') info.push('niet vóór ' + NP.fmt(Number(a.nietVoor)));
+    if (c && a.soort !== 'eind') info.push(kritiek ? 'bepalend' : 'uiterlijk ' + NP.fmt(c.ls));
+    if (info.length) out += `<text x="${cx}" y="${EW + 16 + regels.length * 14}" text-anchor="middle" font-size="10.5" fill="${kritiek ? k.kritiekTekst : k.zacht}" font-family='${NP.FONT}'>${esc(info.join(' · '))}</text>`;
+    if (opts.scherm) {
+      if (a.soort !== 'start') out += `<circle class="poort" data-id="${esc(a.id)}" data-poort="start" cx="${cx - ER}" cy="${cy}" r="7" fill="#FFFFFF" stroke="${k.rand}" stroke-width="1.5"><title>Ingang</title></circle>`;
+      if (a.soort !== 'eind') out += `<circle class="poort" data-id="${esc(a.id)}" data-poort="einde" cx="${cx + ER}" cy="${cy}" r="7" fill="#FFFFFF" stroke="${k.rand}" stroke-width="1.5"><title>Trigger: sleep naar een activiteit</title></circle>`;
+    }
+    return out + '</g>';
+  }
 
   NP.tekenKnopen = function (p, opts) {
     const k = NP.kleuren(opts.zw);
@@ -139,10 +228,10 @@
     let out = '';
     for (const a of p.activiteiten) {
       const c = reken && !reken.kringFout ? reken.per[a.id] : null;
+      if (NP.isGebeurtenis(a)) { out += tekenGebeurtenis(a, c, opts, k); continue; }
       const kritiek = c && c.kritiek;
       const sel = opts.sel && opts.sel.has(a.id);
-      const x = a.x, y = a.y;
-      out += `<g class="knoop" data-id="${esc(a.id)}" transform="translate(${x} ${y})">`;
+      out += `<g class="knoop" data-id="${esc(a.id)}" transform="translate(${a.x} ${a.y})">`;
       out += `<title>${esc(a.id + ' · ' + (a.naam || ''))}</title>`;
       if (sel) out += `<rect x="-5" y="-5" width="${W + 10}" height="${H + 10}" rx="9" fill="rgba(29,78,216,.15)"/>`;
       out += `<rect x="0" y="0" width="${W}" height="${H}" rx="6" fill="#FFFFFF" stroke="${sel ? '#1D4ED8' : k.rand}" stroke-width="${sel ? 2.2 : (kritiek && opts.zw ? 2.4 : 1.4)}"/>`;
@@ -159,7 +248,6 @@
       }
       if (kritiek) out += `<text x="${W - 8}" y="17" text-anchor="end" font-size="10.5" font-weight="700" fill="${k.kritiekTekst}" font-family='${NP.FONT}'>Kritiek</text>`;
       if (lusLeden.has(a.id)) out += `<text x="${W - 8}" y="${kritiek ? 31 : 17}" text-anchor="end" font-size="10.5" font-weight="700" fill="${k.lus}" font-family='${NP.FONT}'>↺</text>`;
-      // zes cellen
       const cw = W / 3;
       const vals = c
         ? [['Vroegste start', c.vs], ['Doorlooptijd', a.duur], ['Vroegste einde', c.ve], ['Laatste start', c.ls], ['Totale speling', c.ts], ['Laatste einde', c.le]]
@@ -172,6 +260,12 @@
         out += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="9.5" fill="${k.zacht}" font-family='${NP.FONT}'>${lab}</text>`;
         out += `<text x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="16" ${isTs || isD ? 'font-weight="700"' : ''} fill="${isTs && kritiek ? k.kritiekTekst : k.tekst}" font-family='${NP.FONT}'>${esc(NP.fmt(Number(v)))}</text>`;
       });
+      // aangrijpingspunten van triggers als streepje over het blok
+      for (const r of p.relaties) {
+        if (r.naar !== a.id || r.aangrijp !== 'tijdens' || !NP.isTriggerRelatie(p, r)) continue;
+        const x = NP.aangrijpX(p, r, a) - a.x;
+        out += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="${k.trigger}" stroke-width="1" stroke-dasharray="3 3" opacity=".8"/>`;
+      }
       if (opts.scherm) {
         out += `<circle class="poort" data-id="${esc(a.id)}" data-poort="start" cx="0" cy="${NP.KNOOP.POORT_Y}" r="7" fill="#FFFFFF" stroke="${k.rand}" stroke-width="1.5"><title>Startpoort</title></circle>`;
         out += `<circle class="poort" data-id="${esc(a.id)}" data-poort="einde" cx="${W}" cy="${NP.KNOOP.POORT_Y}" r="7" fill="#FFFFFF" stroke="${k.rand}" stroke-width="1.5"><title>Eindpoort</title></circle>`;
@@ -181,17 +275,16 @@
     return out;
   };
 
-  /* Omhullende van alle knopen en routes */
   NP.omhullende = function (p) {
     if (!p.activiteiten.length) return null;
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
     for (const a of p.activiteiten) {
-      x1 = Math.min(x1, a.x); y1 = Math.min(y1, a.y); x2 = Math.max(x2, a.x + W); y2 = Math.max(y2, a.y + H);
+      const v = NP.vlak(a);
+      x1 = Math.min(x1, v.x); y1 = Math.min(y1, v.y); x2 = Math.max(x2, v.x + v.w); y2 = Math.max(y2, v.y + v.h);
     }
     for (const r of p.relaties) {
-      const A = NP.getAct(p, r.van), B = NP.getAct(p, r.naar);
-      if (!A || !B) continue;
-      for (const q of NP.route(A, B, r.type)) { x1 = Math.min(x1, q.x); y1 = Math.min(y1, q.y); x2 = Math.max(x2, q.x); y2 = Math.max(y2, q.y); }
+      if (!NP.getAct(p, r.van) || !NP.getAct(p, r.naar)) continue;
+      for (const q of NP.routeRel(p, r)) { x1 = Math.min(x1, q.x); y1 = Math.min(y1, q.y - 46); x2 = Math.max(x2, q.x); y2 = Math.max(y2, q.y); }
     }
     const m = 24;
     return { x: x1 - m, y: y1 - m, w: x2 - x1 + 2 * m, h: y2 - y1 + 2 * m };

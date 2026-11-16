@@ -29,8 +29,8 @@ Voor Excel heeft de tool de bibliotheek SheetJS nodig. Die wordt via internet ge
 
 | Tabblad | Kolommen |
 |---|---|
-| Activiteiten | ID, Naam, Rol, Doorlooptijd, Notitie · *grijs (alleen om te lezen):* Vroegste start, Vroegste einde, Laatste start, Laatste einde, Totale speling, Kritiek |
-| Relaties | Van, Naar, Type (FS/SS/FF/SF), Tijdsverschil, Lus (ja/nee) |
+| Activiteiten | ID, Soort (activiteit/start/tussentijds/eind), Naam, Rol, Doorlooptijd, Niet vóór, Notitie · *grijs (alleen om te lezen):* Vroegste start, Vroegste einde, Laatste start, Laatste einde, Totale speling, Kritiek |
+| Relaties | Van, Naar, Type (FS/SS/FF/SF), Tijdsverschil, Aangrijpingspunt (begin/tijdens/einde), Na, Na-eenheid (dagen/%), Lus (ja/nee) · *grijs:* Wachttijd |
 | Project | Naam, Tijdseenheid, Startdatum, Bestandsversie, Gemaakt met |
 | _indeling | *verborgen:* ID, X, Y (plek op het canvas) |
 
@@ -39,6 +39,30 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 ---
 
 ## Wijzigingen per versie
+
+### v0.2 (16-11-2026)
+
+**Gebeurtenissen en triggers**
+- Nieuw knooptype *gebeurtenis* (knop *+ Gebeurtenis* of toets G): startgebeurtenis (cirkel), tussentijdse gebeurtenis (dubbele cirkel) en eindgebeurtenis (dikke cirkel). In de cirkel staat de dag; eronder de naam.
+- Tussentijdse en startgebeurtenissen hebben een *niet vóór*-dag; de gebeurtenis ligt nooit eerder.
+- Een gebeurtenis triggert een activiteit via een groene pijl naar de bovenkant van het blok. Het aangrijpingspunt kan aan het begin, tijdens (na p dagen of p % van de doorlooptijd) of aan het einde zijn. Bij het slepen bepaalt de plek waar je loslaat het aangrijpingspunt, met voorbeeldlabel; een streepje over het blok toont het punt.
+- Rekenen: VS(activiteit) ≥ moment(gebeurtenis) + tijdsverschil − p. De gebeurtenis krijgt een *uiterlijk*-moment en speling; is die 0, dan staat er *bepalend* en is ze kritiek.
+- Een activiteit kan van soort wisselen (activiteit ↔ gebeurtenis) via het paneel rechts.
+
+**Wachttijd**
+- Op pijlen staat *wacht n* als de opvolger die input eerder krijgt dan nodig (vrije speling op de relatie). Aan/uit met het vinkje *Wachttijd*. Ook in het paneel rechts, in Excel (rekenkolom) en in de legenda van de afdruk.
+
+**Relaties**
+- Pijlpunten zijn groter en altijd zichtbaar; op langere pijlen staat halverwege een extra pijltje dat de richting aangeeft.
+- De poorten (witte rondjes) zijn alleen zichtbaar als je over een blok beweegt of een relatie aan het leggen bent.
+- Tijdens het slepen van een relatie staat bij de muis welk type relatie of trigger er ontstaat.
+- Opgelost: tijdens het slepen werd de doelpoort niet altijd herkend omdat de voorbeeldlijn in de weg zat.
+
+**Excel**
+- Activiteiten: nieuwe kolommen *Soort* en *Niet vóór*. Relaties: *Aangrijpingspunt*, *Na*, *Na-eenheid* en rekenkolom *Wachttijd*. Bestanden van v0.1 blijven openen.
+
+**Voorbeeld**
+- Het voorbeeldproject heeft nu ook een tussentijdse gebeurtenis (*Besluit CvB over faciliteiten*, niet vóór dag 8, tijdens na 2 dagen).
 
 ### v0.1 — eerste versie (15-11-2026)
 
@@ -81,7 +105,7 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 - Helpfunctie met uitleg, sneltoetsen, rekenregels, Excel-indeling en afdrukken.
 - Voorbeeldproject (knop *Voorbeeld laden* op een leeg canvas).
 
-### Nog niet in deze versie (ideeën voor later)
+### Nog niet gebouwd (ideeën voor later)
 - Hulplijnen tijdens slepen.
 - Vrije speling.
 - Datums in plaats van dagnummers (werkdagenkalender).

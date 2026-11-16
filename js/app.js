@@ -41,14 +41,14 @@
   function ongedaan() {
     if (!S.undo.length) return;
     S.redo.push(momentopname());
-    S.p = JSON.parse(S.undo.pop());
+    S.p = NP.normaliseer(JSON.parse(S.undo.pop()));
     opschonenSelectie();
     gewijzigd();
   }
   function opnieuw() {
     if (!S.redo.length) return;
     S.undo.push(momentopname());
-    S.p = JSON.parse(S.redo.pop());
+    S.p = NP.normaliseer(JSON.parse(S.redo.pop()));
     opschonenSelectie();
     gewijzigd();
   }
@@ -105,8 +105,9 @@
     const a = NP.getAct(S.p, id);
     if (!a) return;
     const r = svg.getBoundingClientRect();
-    S.view.x = r.width / 2 - (a.x + W / 2) * S.view.z;
-    S.view.y = r.height / 2 - (a.y + H / 2) * S.view.z;
+    const m = NP.maat(a);
+    S.view.x = r.width / 2 - (a.x + m.w / 2) * S.view.z;
+    S.view.y = r.height / 2 - (a.y + m.h / 2) * S.view.z;
     zetView();
   }
 
@@ -114,7 +115,7 @@
     S.reken = NP.bereken(S.p);
     const toonKritiek = $('chkKritiek').checked;
     const reken = toonKritiek ? S.reken : Object.assign({}, S.reken, { drijvend: new Set(), per: kopieZonderKritiek(S.reken.per) });
-    const opts = { reken, sel: S.sel, selRel: S.selRel, scherm: true };
+    const opts = { reken, sel: S.sel, selRel: S.selRel, scherm: true, wacht: $('chkWacht').checked };
     $('defs').innerHTML = NP.defs(NP.kleuren(false));
     $('laagRel').innerHTML = NP.tekenRelaties(S.p, opts);
     $('laagKnoop').innerHTML = NP.tekenKnopen(S.p, opts);
@@ -141,7 +142,7 @@
     for (const a of S.p.activiteiten) {
       if (z && !(`${a.id} ${a.naam} ${a.rol}`.toLowerCase().includes(z))) continue;
       const c = S.reken.kringFout ? null : S.reken.per[a.id];
-      rij.push(`<button class="lijstrij${S.sel.has(a.id) ? ' sel' : ''}" data-id="${NP.esc(a.id)}"><span class="id">${NP.esc(a.id)}</span><span title="${NP.esc(a.naam)}">${NP.esc(a.naam || '(naamloos)')}</span><span>${NP.fmt(Number(a.duur))}</span><span class="${c && c.kritiek ? 'krit' : ''}">${c ? NP.fmt(c.ts) : ''}</span></button>`);
+      rij.push(`<button class="lijstrij${S.sel.has(a.id) ? ' sel' : ''}" data-id="${NP.esc(a.id)}"><span class="id">${NP.esc(a.id)}</span><span title="${NP.esc(a.naam)}">${NP.isGebeurtenis(a) ? '◯ ' : ''}${NP.esc(a.naam || '(naamloos)')}</span><span>${NP.isGebeurtenis(a) ? '–' : NP.fmt(Number(a.duur))}</span><span class="${c && c.kritiek ? 'krit' : ''}">${c ? NP.fmt(c.ts) : ''}</span></button>`);
     }
     $('lijst').innerHTML = rij.join('') || '<p class="klein" style="padding:6px">Geen activiteiten.</p>';
   }
@@ -154,7 +155,8 @@
     $('status').innerHTML =
       (r.kringFout ? '<span class="fout">Er zit een kring in het netwerk; rekenen is gestopt. Markeer een relatie als lus.</span>' :
         `<span><strong>Projectduur:</strong> ${NP.fmt(r.projectEinde)} ${NP.esc(S.p.eenheid || 'werkdagen')}</span>`) +
-      `<span><strong>Activiteiten:</strong> ${S.p.activiteiten.length}</span>` +
+      `<span><strong>Activiteiten:</strong> ${S.p.activiteiten.filter(a => !NP.isGebeurtenis(a)).length}</span>` +
+      `<span><strong>Gebeurtenissen:</strong> ${S.p.activiteiten.filter(a => NP.isGebeurtenis(a)).length}</span>` +
       `<span><strong>Kritiek:</strong> ${krit}</span>` +
       `<span class="lus"><strong>Lussen:</strong> ${lussen}${lussen ? ' (niet meegerekend)' : ''}</span>` +
       `<span class="vul"></span>` +
@@ -176,7 +178,9 @@
     const lw = vb.w / 200;
     for (const a of S.p.activiteiten) {
       const c = S.reken && !S.reken.kringFout ? S.reken.per[a.id] : null;
-      s += `<rect x="${a.x}" y="${a.y}" width="${W}" height="${H}" fill="${c && c.kritiek ? '#F4B8B0' : '#C9D3E3'}" stroke="#6B6B66" stroke-width="${lw}"/>`;
+      const m = NP.maat(a);
+      if (NP.isGebeurtenis(a)) s += `<circle cx="${a.x + m.w / 2}" cy="${a.y + m.h / 2}" r="${m.w / 2}" fill="${c && c.kritiek ? '#F4B8B0' : '#9FE1CB'}" stroke="#0F6E56" stroke-width="${lw}"/>`;
+      else s += `<rect x="${a.x}" y="${a.y}" width="${m.w}" height="${m.h}" fill="${c && c.kritiek ? '#F4B8B0' : '#C9D3E3'}" stroke="#6B6B66" stroke-width="${lw}"/>`;
     }
     s += `<rect x="${zicht.x}" y="${zicht.y}" width="${zicht.w}" height="${zicht.h}" fill="rgba(29,78,216,.07)" stroke="#1D4ED8" stroke-width="${lw * 1.6}"/>`;
     m.innerHTML = s;
@@ -188,10 +192,10 @@
     if (el.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) {
       // tijdens typen niet het hele paneel vervangen; alleen rekenwaarden bijwerken
       const vak = el.querySelector('.rekenvak');
-      if (vak && S.sel.size === 1) vak.outerHTML = rekenvak([...S.sel][0]);
+      if (vak && S.sel.size === 1) { const id = [...S.sel][0]; vak.outerHTML = NP.isGebeurtenis(NP.getAct(S.p, id)) ? rekenvakGeb(id) : rekenvak(id); }
       return;
     }
-    if (S.sel.size === 1) el.innerHTML = paneelActiviteit([...S.sel][0]);
+    if (S.sel.size === 1) { const id = [...S.sel][0]; el.innerHTML = NP.isGebeurtenis(NP.getAct(S.p, id)) ? paneelGebeurtenis(id) : paneelActiviteit(id); }
     else if (S.sel.size > 1) el.innerHTML = paneelMeer();
     else el.innerHTML = paneelProject();
   }
@@ -206,7 +210,11 @@
   function relRij(r, andereId, richting) {
     const b = NP.getAct(S.p, andereId);
     const v = Number(r.verschil) || 0;
-    const lab = `${r.type}${v ? (v > 0 ? ' +' : ' −') + NP.fmt(Math.abs(v)) : ' +0'}${r.lus ? ' ↺' : ''}`;
+    let lab = `${r.type}${v ? (v > 0 ? ' +' : ' −') + NP.fmt(Math.abs(v)) : ' +0'}`;
+    if (NP.isTriggerRelatie(S.p, r)) lab = (r.aangrijp === 'einde' ? 'trigger einde' : r.aangrijp === 'tijdens' ? 'trigger na ' + NP.fmt(Number(r.na) || 0) + (r.naEenheid === '%' ? '%' : ' d') : 'trigger begin') + (v ? (v > 0 ? ' +' : ' −') + NP.fmt(Math.abs(v)) : '');
+    if (r.lus) lab += ' ↺';
+    const w = S.reken && S.reken.wacht ? S.reken.wacht[r.id] : 0;
+    if (!r.lus && w > 0) lab += ` · wacht ${NP.fmt(w)}`;
     return `<button class="relrij${r.lus ? ' lus' : ''}" data-relopen="${NP.esc(r.id)}" title="${richting}: klik om te bewerken"><span>${NP.esc(b ? b.naam || b.id : andereId)}</span><b>${lab}</b></button>`;
   }
   function paneelActiviteit(id) {
@@ -215,6 +223,7 @@
     const na = S.p.relaties.filter(r => r.van === id);
     const opties = S.p.activiteiten.filter(x => x.id !== id).map(x => `<option value="${NP.esc(x.id)}">${NP.esc(x.id + ' · ' + (x.naam || ''))}</option>`).join('');
     return `<div class="paneelkop">Activiteit ${NP.esc(a.id)}</div>
+      <label class="veld">Soort<select data-veld="soort">${NP.SOORTEN.map(x => `<option value="${x}"${a.soort === x ? ' selected' : ''}>${NP.SOORT_NAMEN[x]}</option>`).join('')}</select></label>
       <label class="veld">Naam<input data-veld="naam" type="text" value="${NP.esc(a.naam)}"></label>
       <label class="veld">Rol / verantwoordelijke<input data-veld="rol" type="text" value="${NP.esc(a.rol)}"></label>
       <label class="veld">Doorlooptijd (${NP.esc(S.p.eenheid || 'werkdagen')})<input data-veld="duur" type="number" min="0" step="0.5" value="${NP.esc(a.duur)}"></label>
@@ -230,6 +239,44 @@
       </div>` : ''}
       <label class="veld">Notitie<textarea data-veld="notitie" rows="3">${NP.esc(a.notitie)}</textarea></label>
       <button id="btnVerwijderAct" class="gevaar">Activiteit verwijderen</button>`;
+  }
+  function rekenvakGeb(id) {
+    const c = S.reken.kringFout ? null : S.reken.per[id];
+    const a = NP.getAct(S.p, id);
+    const v = x => c ? NP.fmt(x) : '–';
+    if (a.soort === 'eind') return `<div class="rekenvak"><div>Moment<b>${v(c && c.vs)}</b></div></div>`;
+    return `<div class="rekenvak">
+      <div>Vroegst<b>${v(c && c.vs)}</b></div><div title="Laatste moment zonder dat het project uitloopt">Uiterlijk<b>${v(c && c.ls)}</b></div><div class="${c && c.kritiek ? 'krit' : ''}">Speling<b>${v(c && c.ts)}</b></div></div>`;
+  }
+  function paneelGebeurtenis(id) {
+    const a = NP.getAct(S.p, id);
+    const voor = S.p.relaties.filter(r => r.naar === id);
+    const na = S.p.relaties.filter(r => r.van === id);
+    const opties = S.p.activiteiten.filter(x => x.id !== id).map(x => `<option value="${NP.esc(x.id)}">${NP.esc(x.id + ' · ' + (x.naam || ''))}</option>`).join('');
+    const c = S.reken.kringFout ? null : S.reken.per[id];
+    let uitleg = '';
+    if (c && a.soort !== 'eind') uitleg = c.kritiek
+      ? 'Deze gebeurtenis is <strong>bepalend</strong>: komt ze later, dan loopt het project uit.'
+      : `Deze gebeurtenis mag tot uiterlijk dag <strong>${NP.fmt(c.ls)}</strong> plaatsvinden zonder dat het project uitloopt.`;
+    return `<div class="paneelkop">Gebeurtenis ${NP.esc(a.id)}</div>
+      ${soortSelect(a)}
+      <label class="veld">Naam<input data-veld="naam" type="text" value="${NP.esc(a.naam)}"></label>
+      ${a.soort !== 'eind' ? `<label class="veld">Niet vóór (dag, leeg = geen)<input data-veld="nietVoor" type="number" min="0" step="0.5" value="${a.nietVoor === null || a.nietVoor === undefined ? '' : NP.esc(a.nietVoor)}"></label>` : ''}
+      ${rekenvakGeb(id)}
+      ${uitleg ? `<p class="klein">${uitleg}</p>` : ''}
+      ${a.soort !== 'start' ? `<h3>Komt na</h3>${voor.map(r => relRij(r, r.van, 'Voorganger')).join('') || '<p class="klein">Niets.</p>'}` : ''}
+      ${a.soort !== 'eind' ? `<h3>Triggert</h3>${na.map(r => relRij(r, r.naar, 'Trigger')).join('') || '<p class="klein">Nog niets. Sleep van het rechter rondje naar een activiteit: links op het blok = begin, in het midden = tijdens, rechts = einde.</p>'}` : ''}
+      ${opties && a.soort !== 'eind' ? `<div class="relform">
+        <select class="heel" id="trAndere" aria-label="Activiteit">${opties}</select>
+        <select id="trAangrijp" aria-label="Aangrijpingspunt"><option value="begin">aan het begin</option><option value="tijdens">tijdens</option><option value="einde">aan het einde</option></select>
+        <input id="trNa" type="number" min="0" step="0.5" value="0" aria-label="Na (dagen)" title="Bij 'tijdens': na hoeveel dagen">
+        <button id="trToevoegen" class="heel">Trigger toevoegen</button>
+      </div>` : ''}
+      <label class="veld">Notitie<textarea data-veld="notitie" rows="3">${NP.esc(a.notitie)}</textarea></label>
+      <button id="btnVerwijderAct" class="gevaar">Gebeurtenis verwijderen</button>`;
+  }
+  function soortSelect(a) {
+    return `<label class="veld">Soort<select data-veld="soort">${NP.SOORTEN.map(x => `<option value="${x}"${a.soort === x ? ' selected' : ''}>${NP.SOORT_NAMEN[x]}</option>`).join('')}</select></label>`;
   }
   function paneelMeer() {
     return `<div class="paneelkop">${S.sel.size} activiteiten geselecteerd</div>
@@ -247,22 +294,26 @@
   }
 
   /* ---------- acties ---------- */
-  function nieuweActiviteit(x, y) {
+  function nieuweKnoop(soort, x, y) {
     bewaarStap();
-    const id = NP.volgendId(S.p.activiteiten, 'A');
+    const geb = soort !== 'activiteit';
+    const id = NP.volgendId(S.p.activiteiten, geb ? 'G' : 'A');
+    const m = geb ? NP.GEBEURTENIS : { W, H };
     if (x === undefined) {
       const r = svg.getBoundingClientRect();
       const c = schermNaarWereld(r.left + r.width / 2, r.top + r.height / 2);
-      x = c.x - W / 2; y = c.y - H / 2;
-      // niet precies op een bestaand blok
+      x = c.x - m.W / 2; y = c.y - m.H / 2;
       while (S.p.activiteiten.some(a => Math.abs(a.x - x) < 30 && Math.abs(a.y - y) < 30)) { x += 40; y += 40; }
     }
-    const a = { id, naam: 'Nieuwe activiteit', rol: '', duur: 1, notitie: '', x: snap(x), y: snap(y) };
+    const a = geb
+      ? { id, soort, naam: 'Nieuwe gebeurtenis', rol: '', duur: 0, nietVoor: null, notitie: '', x: snap(x), y: snap(y) }
+      : { id, soort: 'activiteit', naam: 'Nieuwe activiteit', rol: '', duur: 1, nietVoor: null, notitie: '', x: snap(x), y: snap(y) };
     S.p.activiteiten.push(a);
     S.sel = new Set([id]); S.selRel = null;
     gewijzigd();
     setTimeout(() => { const i = document.querySelector('#inspecteur [data-veld=naam]'); if (i) { i.focus(); i.select(); } }, 0);
   }
+  const nieuweActiviteit = (x, y) => nieuweKnoop('activiteit', x, y);
   function snap(v) { return $('chkRaster').checked ? Math.round(v / RASTER) * RASTER : Math.round(v); }
 
   function verwijderSelectie() {
@@ -281,13 +332,13 @@
     gewijzigd();
   }
 
-  function maakRelatie(van, naar, type, verschil) {
+  function maakRelatie(van, naar, type, verschil, extra) {
     if (van === naar) return;
     const bestaand = S.p.relaties.find(r => r.van === van && r.naar === naar);
     if (bestaand) { toast('Er bestaat al een relatie tussen deze twee activiteiten. Dubbelklik op de pijl om hem aan te passen.'); S.selRel = bestaand.id; S.sel.clear(); teken(); return; }
     bewaarStap();
     const lus = NP.maaktKring(S.p, van, naar);
-    const r = { id: NP.volgendId(S.p.relaties, 'R'), van, naar, type, verschil: verschil || 0, lus };
+    const r = Object.assign({ id: NP.volgendId(S.p.relaties, 'R'), van, naar, type, verschil: verschil || 0, lus, aangrijp: 'begin', na: 0, naEenheid: 'dagen' }, extra || {});
     S.p.relaties.push(r);
     if (lus) toast('Rework gedetecteerd: deze relatie gaat terug naar een eerdere activiteit en is als lus (stippellijn) aangegeven. Ze telt niet mee in de berekening.');
     gewijzigd();
@@ -361,7 +412,7 @@
         bezet.add(gewenst);
         regel[id] = gewenst;
         const a = NP.getAct(p, id);
-        a.x = basisX + k * (W + 80);
+        a.x = basisX + k * (W + 80) + (NP.isGebeurtenis(a) ? (W - NP.GEBEURTENIS.W) / 2 : 0);
         a.y = basisY + gewenst * (H + 70);
       }
     }
@@ -451,7 +502,7 @@
   }
   function laadProject(p, zonderPlek) {
     S.undo = []; S.redo = [];
-    S.p = p;
+    S.p = NP.normaliseer(p);
     S.sel.clear(); S.selRel = null;
     if (zonderPlek && zonderPlek.length) {
       if (zonderPlek.length === p.activiteiten.length) ordenen();
@@ -468,8 +519,8 @@
   }
 
   function voorbeeld() {
-    const A = (id, naam, rol, duur, x, y) => ({ id, naam, rol, duur, notitie: '', x, y });
-    const R = (id, van, naar, type, verschil, lus) => ({ id, van, naar, type, verschil, lus: !!lus });
+    const A = (id, naam, rol, duur, x, y) => ({ id, soort: 'activiteit', naam, rol, duur, nietVoor: null, notitie: '', x, y });
+    const R = (id, van, naar, type, verschil, lus) => ({ id, van, naar, type, verschil, lus: !!lus, aangrijp: 'begin', na: 0, naEenheid: 'dagen' });
     bewaarStap();
     S.p = {
       naam: 'Voorbeeld onderwijsprogramma', eenheid: 'werkdagen', startdatum: '',
@@ -479,9 +530,10 @@
         A('A3', 'Onderwijsprogramma controleren', 'Moduleverantwoordelijke', 5, 640, 0),
         A('A4', 'Verwerken van opmerkingen', 'Planner', 5, 960, 0),
         A('A5', 'Definitief opleveren', 'Teamleider', 0, 1280, 0),
-        A('A6', 'Analyseren van onderwijs en faciliteiten', 'Planner', 5, 800, 260)
+        A('A6', 'Analyseren van onderwijs en faciliteiten', 'Planner', 5, 800, 360),
+        { id: 'G1', soort: 'tussen', naam: 'Besluit CvB over faciliteiten', rol: '', duur: 0, nietVoor: 8, notitie: '', x: 760, y: 150 }
       ],
-      relaties: [R('R1', 'A1', 'A2', 'FS', 0), R('R2', 'A2', 'A3', 'FS', 0), R('R3', 'A2', 'A6', 'FS', 0), R('R4', 'A3', 'A4', 'FS', 0), R('R5', 'A6', 'A4', 'FF', 2), R('R6', 'A4', 'A5', 'FS', 0)]
+      relaties: [R('R1', 'A1', 'A2', 'FS', 0), R('R2', 'A2', 'A3', 'FS', 0), R('R3', 'A2', 'A6', 'FS', 0), R('R4', 'A3', 'A4', 'FS', 0), R('R5', 'A6', 'A4', 'FF', 2), R('R6', 'A4', 'A5', 'FS', 0), Object.assign(R('R7', 'G1', 'A6', 'FS', 0), { aangrijp: 'tijdens', na: 2 })]
     };
     S.sel.clear(); S.selRel = null;
     gewijzigd();
@@ -495,9 +547,15 @@
     if (!r) return;
     dlgRelId = id;
     const A = NP.getAct(S.p, r.van), B = NP.getAct(S.p, r.naar);
+    const trig = NP.isTriggerRelatie(S.p, r);
     $('relVan').textContent = `${A.id} · ${A.naam}`;
     $('relNaar').textContent = `${B.id} · ${B.naam}`;
+    $('relTypeBlok').hidden = trig || NP.isGebeurtenis(B);
+    $('relTriggerBlok').hidden = !trig;
     document.querySelectorAll('#relTypes input').forEach(i => { i.checked = i.value === r.type; });
+    document.querySelectorAll('#relAangrijp input').forEach(i => { i.checked = i.value === (r.aangrijp || 'begin'); });
+    $('relNa').value = Number(r.na) || 0;
+    $('relNaEenheid').value = r.naEenheid === '%' ? '%' : 'dagen';
     $('relVerschil').value = Number(r.verschil) || 0;
     $('relLus').checked = !!r.lus;
     $('relFout').hidden = true;
@@ -506,17 +564,37 @@
     $('dlgRel').showModal();
   }
   function relUitleg() {
-    const t = (document.querySelector('#relTypes input:checked') || {}).value || 'FS';
+    const r = S.p.relaties.find(x => x.id === dlgRelId);
+    const eh = S.p.eenheid || 'werkdagen';
     const v = parseFloat($('relVerschil').value) || 0;
+    if (r && NP.isTriggerRelatie(S.p, r)) {
+      const ag = (document.querySelector('#relAangrijp input:checked') || {}).value || 'begin';
+      $('relNaBlok').hidden = ag !== 'tijdens';
+      const B = NP.getAct(S.p, r.naar);
+      const n = parseFloat($('relNa').value) || 0;
+      const naam = B.naam || B.id;
+      const tijd = v === 0 ? 'op het moment van de gebeurtenis' : v > 0 ? `${NP.fmt(v)} ${eh} na de gebeurtenis` : `${NP.fmt(-v)} ${eh} vóór de gebeurtenis`;
+      const pnt = $('relNaEenheid').value === '%' ? `${NP.fmt(n)}% van de doorlooptijd` : `${NP.fmt(n)} ${eh}`;
+      $('relUitleg').textContent = ag === 'begin' ? `${naam} mag op zijn vroegst starten ${tijd}.`
+        : ag === 'einde' ? `${naam} mag op zijn vroegst eindigen ${tijd}.`
+        : `${naam} heeft de gebeurtenis nodig na ${pnt} werk. De activiteit mag dus eerder starten, maar dat punt ligt op zijn vroegst ${tijd}.`;
+      return;
+    }
+    const B = r ? NP.getAct(S.p, r.naar) : null;
+    if (B && NP.isGebeurtenis(B)) { $('relUitleg').textContent = 'De gebeurtenis vindt op zijn vroegst plaats als A klaar is' + (v ? ` (${v > 0 ? '+' : '−'}${NP.fmt(Math.abs(v))} ${eh})` : '') + '.'; return; }
+    const t = (document.querySelector('#relTypes input:checked') || {}).value || 'FS';
     const zin = { FS: ['starten', 'het einde'], SS: ['starten', 'de start'], FF: ['eindigen', 'het einde'], SF: ['eindigen', 'de start'] }[t];
-    const tijd = v === 0 ? 'direct na' : v > 0 ? `${NP.fmt(v)} ${S.p.eenheid || 'werkdagen'} na` : `${NP.fmt(-v)} ${S.p.eenheid || 'werkdagen'} vóór`;
+    const tijd = v === 0 ? 'direct na' : v > 0 ? `${NP.fmt(v)} ${eh} na` : `${NP.fmt(-v)} ${eh} vóór`;
     $('relUitleg').textContent = `B mag op zijn vroegst ${zin[0]} ${tijd} ${zin[1]} van A.`;
   }
   function relOpslaan() {
     const r = S.p.relaties.find(x => x.id === dlgRelId);
     if (!r) return;
     const type = (document.querySelector('#relTypes input:checked') || {}).value || 'FS';
+    const aangrijp = (document.querySelector('#relAangrijp input:checked') || {}).value || 'begin';
     const verschil = parseFloat($('relVerschil').value) || 0;
+    const na = Math.max(0, parseFloat($('relNa').value) || 0);
+    const naEenheid = $('relNaEenheid').value === '%' ? '%' : 'dagen';
     const lus = $('relLus').checked;
     if (!lus && NP.maaktKring(S.p, r.van, r.naar, r.id)) {
       $('relFout').textContent = 'Zonder lus-markering sluit deze relatie een kring. Laat “Terugkoppeling (lus)” aan, of maak eerst een andere relatie in de kring een lus.';
@@ -524,7 +602,7 @@
       return;
     }
     bewaarStap();
-    Object.assign(r, { type, verschil, lus });
+    Object.assign(r, { type, verschil, lus, aangrijp, na, naEenheid });
     $('dlgRel').close();
     gewijzigd();
   }
@@ -548,6 +626,35 @@
   /* ---------- muis en toetsen op het canvas ---------- */
   function knoopVan(el) { const g = el.closest && el.closest('.knoop'); return g ? g.dataset.id : null; }
 
+  function doelOnder(e) {
+    const onder = document.elementFromPoint(e.clientX, e.clientY);
+    const poort = onder && onder.closest && onder.closest('.poort');
+    if (poort) return { id: poort.dataset.id, poort, poortNaam: poort.dataset.poort };
+    return { id: onder ? knoopVan(onder) : null, poort: null, poortNaam: null };
+  }
+  /* Bepaalt wat voor relatie er ontstaat als je loslaat */
+  function planRelatie(m, d, w) {
+    const A = NP.getAct(S.p, m.van), B = NP.getAct(S.p, d.id);
+    if (NP.isGebeurtenis(A) && m.poort === 'start') {
+      // vanaf de ingang van een gebeurtenis slepen = relatie náár de gebeurtenis
+      return { van: B.id, naar: A.id, type: NP.isGebeurtenis(B) ? 'FS' : (d.poortNaam === 'start' ? 'SS' : 'FS'), extra: {} };
+    }
+    if (NP.isGebeurtenis(A) && !NP.isGebeurtenis(B)) {
+      let aangrijp = 'begin', na = 0;
+      const D = Math.max(0, Number(B.duur) || 0);
+      if (d.poortNaam === 'start') aangrijp = 'begin';
+      else if (d.poortNaam === 'einde') aangrijp = 'einde';
+      else {
+        const f = (w.x - B.x) / W;
+        if (f > 0.82) aangrijp = 'einde';
+        else if (f > 0.18 && D > 0) { aangrijp = 'tijdens'; na = Math.min(D, Math.max(0.5, Math.round(f * D * 2) / 2)); }
+      }
+      return { van: A.id, naar: B.id, type: 'FS', trigger: true, extra: { aangrijp, na, naEenheid: 'dagen' } };
+    }
+    const naarPoort = NP.isGebeurtenis(B) ? 'start' : (d.poortNaam || 'start');
+    return { van: A.id, naar: B.id, type: NP.typeUitPoorten(NP.isGebeurtenis(A) ? 'einde' : m.poort, naarPoort), extra: {} };
+  }
+
   svg.addEventListener('pointerdown', e => {
     if (e.button === 2) return;
     doek.focus({ preventScroll: true });
@@ -563,6 +670,7 @@
     if (poort) {
       S.modus = 'verbinden';
       S.m = { van: poort.dataset.id, poort: poort.dataset.poort };
+      doek.classList.add('verbinden');
       svg.setPointerCapture(e.pointerId);
       return;
     }
@@ -612,7 +720,7 @@
         dy = Math.round((l.y + dy) / RASTER) * RASTER - l.y;
       }
       for (const [id, p0] of S.m.pos) { const a = NP.getAct(S.p, id); a.x = p0.x + dx; a.y = p0.y + dy; }
-      $('laagRel').innerHTML = NP.tekenRelaties(S.p, { reken: S.reken, sel: S.sel, selRel: S.selRel, scherm: true });
+      $('laagRel').innerHTML = NP.tekenRelaties(S.p, { reken: S.reken, sel: S.sel, selRel: S.selRel, scherm: true, wacht: $('chkWacht').checked });
       $('laagKnoop').innerHTML = NP.tekenKnopen(S.p, { reken: S.reken, sel: S.sel, selRel: S.selRel, scherm: true });
       tekenMinikaart();
     } else if (S.modus === 'verbinden') {
@@ -620,18 +728,27 @@
       const s = NP.poortPunt(A, S.m.poort);
       const w = schermNaarWereld(e.clientX, e.clientY);
       document.querySelectorAll('.poort.doel').forEach(x => x.classList.remove('doel'));
-      const onder = document.elementFromPoint(e.clientX, e.clientY);
-      const doelPoort = onder && onder.closest && onder.closest('.poort');
-      const doelId = doelPoort ? doelPoort.dataset.id : (onder ? knoopVan(onder) : null);
-      const geldig = doelId && doelId !== S.m.van;
-      const lus = geldig && NP.maaktKring(S.p, S.m.van, doelId);
-      if (doelPoort && geldig) doelPoort.classList.add('doel');
-      const kleur = lus ? '#7C3AED' : '#1D4ED8';
+      const d = doelOnder(e);
+      const geldig = d.id && d.id !== S.m.van;
+      if (d.poort && geldig) d.poort.classList.add('doel');
+      const plan = geldig ? planRelatie(S.m, d, w) : null;
+      const lus = plan && NP.maaktKring(S.p, plan.van, plan.naar);
+      const kleur = lus ? '#7C3AED' : plan && plan.trigger ? '#0F6E56' : '#1D4ED8';
       const z = S.view.z;
-      let t = `<path d="M${s.x} ${s.y} L${w.x} ${w.y}" stroke="${kleur}" stroke-width="${2 / z}" stroke-dasharray="${6 / z} ${4 / z}" fill="none" marker-end="url(#${lus ? 'pijl-l' : 'pijl-s'})"/>`;
-      if (lus) {
-        const tekst = '↺ lus: rework, telt niet mee';
-        t += `<g transform="translate(${w.x + 14 / z} ${w.y - 14 / z}) scale(${1 / z})"><rect x="0" y="-15" width="176" height="22" rx="5" fill="#F3EEFF" stroke="#7C3AED"/><text x="8" y="0" font-size="12" font-weight="600" fill="#6D28D9" font-family='${NP.FONT}'>${tekst}</text></g>`;
+      let t = `<path d="M${s.x} ${s.y} L${w.x} ${w.y}" stroke="${kleur}" stroke-width="${2 / z}" stroke-dasharray="${6 / z} ${4 / z}" fill="none" marker-end="url(#${lus ? 'pijl-l' : plan && plan.trigger ? 'pijl-t' : 'pijl-s'})"/>`;
+      let tekst = '';
+      if (lus) tekst = '↺ lus: rework, telt niet mee';
+      else if (plan && plan.trigger) tekst = plan.extra.aangrijp === 'begin' ? 'trigger aan het begin' : plan.extra.aangrijp === 'einde' ? 'trigger aan het einde' : 'trigger na ' + NP.fmt(plan.extra.na) + ' dagen';
+      else if (plan) tekst = plan.type + ' · ' + NP.TYPE_NAMEN[plan.type];
+      if (tekst) {
+        const bw = tekst.length * 6.6 + 18;
+        const bg = lus ? '#F3EEFF' : plan.trigger ? '#E1F5EE' : '#E8EEFC';
+        t += `<g transform="translate(${w.x + 14 / z} ${w.y - 14 / z}) scale(${1 / z})"><rect x="0" y="-15" width="${bw}" height="22" rx="5" fill="${bg}" stroke="${kleur}"/><text x="8" y="0" font-size="12" font-weight="600" fill="${kleur}" font-family='${NP.FONT}'>${NP.esc(tekst)}</text></g>`;
+      }
+      if (plan && plan.trigger) {
+        const B = NP.getAct(S.p, plan.naar);
+        const x = NP.aangrijpX(S.p, Object.assign({ naar: plan.naar }, plan.extra), B);
+        t += `<line x1="${x}" y1="${B.y - 6}" x2="${x}" y2="${B.y + NP.KNOOP.H}" stroke="#0F6E56" stroke-width="${2 / z}"/>`;
       }
       $('laagTijdelijk').innerHTML = t;
     } else if (S.modus === 'lasso') {
@@ -643,7 +760,7 @@
       Object.assign(l.style, { left: x1 - r.left + 'px', top: y1 - r.top + 'px', width: x2 - x1 + 'px', height: y2 - y1 + 'px' });
       const a = schermNaarWereld(x1, y1), b = schermNaarWereld(x2, y2);
       const nieuw = new Set(S.m.basis);
-      for (const act of S.p.activiteiten) if (act.x < b.x && act.x + W > a.x && act.y < b.y && act.y + H > a.y) nieuw.add(act.id);
+      for (const act of S.p.activiteiten) { const v = NP.vlak(act); if (v.x < b.x && v.x + v.w > a.x && v.y < b.y && v.y + v.h > a.y) nieuw.add(act.id); }
       S.sel = nieuw;
       $('laagKnoop').innerHTML = NP.tekenKnopen(S.p, { reken: S.reken, sel: S.sel, scherm: true });
     }
@@ -659,14 +776,14 @@
       if (m.bewogen) { bewaarStap(m.snap); gewijzigd(); }
     } else if (modus === 'verbinden') {
       $('laagTijdelijk').innerHTML = '';
+      doek.classList.remove('verbinden');
       document.querySelectorAll('.poort.doel').forEach(x => x.classList.remove('doel'));
       if (e && e.type === 'pointerup') {
-        const onder = document.elementFromPoint(e.clientX, e.clientY);
-        const doelPoort = onder && onder.closest && onder.closest('.poort');
-        let naar = null, naarPoort = 'start';
-        if (doelPoort) { naar = doelPoort.dataset.id; naarPoort = doelPoort.dataset.poort; }
-        else if (onder) naar = knoopVan(onder);
-        if (naar && naar !== m.van) maakRelatie(m.van, naar, NP.typeUitPoorten(m.poort, naarPoort), 0);
+        const d = doelOnder(e);
+        if (d.id && d.id !== m.van) {
+          const plan = planRelatie(m, d, schermNaarWereld(e.clientX, e.clientY));
+          maakRelatie(plan.van, plan.naar, plan.type, 0, plan.extra);
+        }
       }
     } else if (modus === 'lasso') {
       $('lasso').hidden = true;
@@ -720,6 +837,7 @@
     if (e.key === 'Escape') { S.sel.clear(); S.selRel = null; teken(); return; }
     if (k === 'f' && !ctrl) { passend(); return; }
     if (k === 'n' && !ctrl) { nieuweActiviteit(); return; }
+    if (k === 'g' && !ctrl) { nieuweKnoop('tussen'); return; }
     if (e.key.startsWith('Arrow') && S.sel.size) {
       e.preventDefault();
       const st = RASTER * (e.shiftKey ? 5 : 1);
@@ -751,13 +869,37 @@
     const t = e.target;
     if (t.dataset.veld && S.sel.size === 1) {
       const a = NP.getAct(S.p, [...S.sel][0]);
+      if (t.dataset.veld === 'soort') return;
       if (t.dataset.veld === 'duur') { const v = parseFloat(t.value); a.duur = isNaN(v) || v < 0 ? 0 : v; }
+      else if (t.dataset.veld === 'nietVoor') { const v = parseFloat(t.value); a.nietVoor = isNaN(v) ? null : Math.max(0, v); }
       else a[t.dataset.veld] = t.value;
       S.vuil = true; autosave(); teken();
     } else if (t.dataset.project) {
       S.p[t.dataset.project] = t.value;
       S.vuil = true; autosave(); teken();
     }
+  });
+  insp.addEventListener('change', e => {
+    const t = e.target;
+    if (t.dataset.veld !== 'soort' || S.sel.size !== 1) return;
+    const a = NP.getAct(S.p, [...S.sel][0]);
+    const oud = a.soort, nieuw = t.value;
+    if (oud === nieuw) return;
+    bewaarStap(focusSnap || momentopname());
+    focusSnap = null;
+    const wasGeb = NP.isGebeurtenis(a);
+    a.soort = nieuw;
+    if (NP.isGebeurtenis(a)) {
+      a.duur = 0;
+      if (!wasGeb) { a.x += (W - NP.GEBEURTENIS.W) / 2; a.y += (H - NP.GEBEURTENIS.H) / 2; }
+      if (nieuw === 'start') S.p.relaties = S.p.relaties.filter(r => r.naar !== a.id);
+      if (nieuw === 'eind') S.p.relaties = S.p.relaties.filter(r => r.van !== a.id);
+    } else if (wasGeb) {
+      a.duur = 1; a.nietVoor = null;
+      a.x -= (W - NP.GEBEURTENIS.W) / 2; a.y -= (H - NP.GEBEURTENIS.H) / 2;
+    }
+    t.blur();
+    gewijzigd();
   });
   insp.addEventListener('focusout', e => {
     if (focusSnap && focusSnap !== momentopname()) { bewaarStap(focusSnap); }
@@ -773,6 +915,13 @@
       const id = [...S.sel][0], ander = $('nrAndere').value;
       const voor = $('nrRichting').value === 'voor';
       maakRelatie(voor ? ander : id, voor ? id : ander, $('nrType').value, parseFloat($('nrVerschil').value) || 0);
+    }
+    if (t.id === 'trToevoegen') {
+      const id = [...S.sel][0], ander = $('trAndere').value;
+      const B = NP.getAct(S.p, ander);
+      if (NP.isGebeurtenis(B)) { maakRelatie(id, ander, 'FS', 0); return; }
+      const aangrijp = $('trAangrijp').value;
+      maakRelatie(id, ander, 'FS', 0, { aangrijp, na: aangrijp === 'tijdens' ? (parseFloat($('trNa').value) || 0) : 0, naEenheid: 'dagen' });
     }
   });
 
@@ -802,6 +951,8 @@
   $('btnPrint').onclick = () => openPrint();
   $('btnNieuweAct').onclick = () => nieuweActiviteit();
   $('btnNieuweAct2').onclick = () => nieuweActiviteit();
+  $('btnNieuweGeb').onclick = () => nieuweKnoop('tussen');
+  $('chkWacht').onchange = teken;
   $('btnOrdenen').onclick = () => { if (!S.p.activiteiten.length) return; bewaarStap(); ordenen(); gewijzigd(); passend(); };
   $('btnPassend').onclick = passend;
   $('btnUndo').onclick = ongedaan;
@@ -813,7 +964,9 @@
   $('btnHelp').onclick = () => { $('helpInhoud').innerHTML = NP.helpHtml(); $('dlgHelp').showModal(); };
   $('bestandInvoer').onchange = e => { const f = e.target.files[0]; if (f) leesBestand(f, null); };
 
-  document.querySelectorAll('#relTypes input').forEach(i => i.addEventListener('change', relUitleg));
+  document.querySelectorAll('#relTypes input, #relAangrijp input').forEach(i => i.addEventListener('change', relUitleg));
+  $('relNa').addEventListener('input', relUitleg);
+  $('relNaEenheid').addEventListener('change', relUitleg);
   $('relVerschil').addEventListener('input', relUitleg);
   $('relOk').onclick = relOpslaan;
   $('relWeg').onclick = () => { bewaarStap(); S.p.relaties = S.p.relaties.filter(r => r.id !== dlgRelId); S.selRel = null; $('dlgRel').close(); gewijzigd(); };
@@ -844,7 +997,7 @@
   try {
     const opgeslagen = JSON.parse(localStorage.getItem(OPSLAG_SLEUTEL) || 'null');
     if (opgeslagen && opgeslagen.p && opgeslagen.p.activiteiten) {
-      S.p = opgeslagen.p;
+      S.p = NP.normaliseer(opgeslagen.p);
       S.bestandsnaam = opgeslagen.bestandsnaam || null;
       S.vuil = !!opgeslagen.vuil;
       if (S.p.activiteiten.length) setTimeout(() => toast('Je laatste werk is hersteld (tussentijds bewaard in deze browser).'), 300);

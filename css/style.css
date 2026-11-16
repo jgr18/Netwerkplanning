@@ -56,7 +56,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .knoop { cursor: grab; }
 .knoop .kop { cursor: grab; }
-.poort { cursor: crosshair; }
+.poort { cursor: crosshair; opacity: 0; transition: opacity .12s; }
+.knoop:hover .poort, .doek.verbinden .poort { opacity: 1; }
+.doek.pannen .poort { opacity: 0 !important; }
 .poort:hover, .poort.doel { fill: var(--accent); stroke: var(--accent); }
 .rel { cursor: pointer; }
 .lasso { position: absolute; border: 1.5px dashed var(--accent); background: rgba(29,78,216,.06); pointer-events: none; }
@@ -152,3 +154,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .pagina .pkaart i { display: block; width: 4mm; height: 2.8mm; border: 0.2mm solid #B9B9B4; }
 .pagina .pkaart i.hier { background: #1D4ED8; border-color: #1D4ED8; }
 .pagina .pvoet { font-size: 7.5pt; color: #5F5F5B; border-top: 0.3mm solid #D4D4D0; display: flex; align-items: center; gap: 5mm; }
+#laagTijdelijk { pointer-events: none; }
+.relrij span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.veld input, .veld select { min-width: 0; width: 100%; }

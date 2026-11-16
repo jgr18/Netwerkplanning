@@ -19,11 +19,13 @@
     <button id="btnPrint" title="Afdrukken of PDF (Ctrl+P)">Afdrukken / PDF</button>
     <span class="scheid"></span>
     <button id="btnNieuweAct" title="Nieuwe activiteit (of dubbelklik op het canvas)">+ Activiteit</button>
+    <button id="btnNieuweGeb" title="Nieuwe gebeurtenis (trigger), toets G">+ Gebeurtenis</button>
     <button id="btnOrdenen" title="Alle activiteiten automatisch ordenen">Automatisch ordenen</button>
     <button id="btnPassend" title="Hele netwerk in beeld (F)">Passend in beeld</button>
     <span class="vul"></span>
     <label class="check"><input type="checkbox" id="chkRaster" checked> Raster</label>
     <label class="check"><input type="checkbox" id="chkKritiek" checked> Kritiek pad</label>
+    <label class="check" title="Toon op pijlen hoe lang een activiteit nog wacht op andere input"><input type="checkbox" id="chkWacht" checked> Wachttijd</label>
     <button id="btnUndo" title="Ongedaan maken (Ctrl+Z)">↶</button>
     <button id="btnRedo" title="Opnieuw (Ctrl+Y)">↷</button>
     <button id="btnHelp" title="Uitleg en sneltoetsen">Help</button>
@@ -86,6 +88,7 @@
     <h2>Relatie bewerken</h2>
     <p class="klein">Van (A)<br><strong id="relVan"></strong></p>
     <p class="klein">Naar (B)<br><strong id="relNaar"></strong></p>
+    <div id="relTypeBlok">
     <fieldset class="segment" id="relTypes">
       <legend>Type</legend>
       <label><input type="radio" name="type" value="FS"><span>FS</span></label>
@@ -93,6 +96,19 @@
       <label><input type="radio" name="type" value="FF"><span>FF</span></label>
       <label><input type="radio" name="type" value="SF"><span>SF</span></label>
     </fieldset>
+    </div>
+    <div id="relTriggerBlok" hidden>
+      <fieldset class="segment" id="relAangrijp">
+        <legend>Waar grijpt de trigger aan?</legend>
+        <label><input type="radio" name="aangrijp" value="begin"><span>Begin</span></label>
+        <label><input type="radio" name="aangrijp" value="tijdens"><span>Tijdens</span></label>
+        <label><input type="radio" name="aangrijp" value="einde"><span>Einde</span></label>
+      </fieldset>
+      <div class="twee" id="relNaBlok" style="margin-top:8px">
+        <label class="veld">Na<input type="number" id="relNa" min="0" step="0.5"></label>
+        <label class="veld">Eenheid<select id="relNaEenheid"><option value="dagen">dagen na de start</option><option value="%">% van de doorlooptijd</option></select></label>
+      </div>
+    </div>
     <p class="klein" id="relUitleg"></p>
     <label class="veld"><span>Tijdsverschil (<span class="eenheid">werkdagen</span>)</span><input type="number" id="relVerschil" step="0.5"></label>
     <p class="klein">Positief = wachttijd · negatief = overlap.</p>
