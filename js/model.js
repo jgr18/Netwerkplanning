@@ -3,7 +3,7 @@
   'use strict';
   const NP = (window.NP = window.NP || {});
 
-  NP.VERSIE = '0.41';
+  NP.VERSIE = '0.42';
   NP.TYPES = ['FS', 'SS', 'FF', 'SF'];
   NP.TYPE_NAMEN = { FS: 'Finish–Start', SS: 'Start–Start', FF: 'Finish–Finish', SF: 'Start–Finish' };
   NP.SOORTEN = ['activiteit', 'start', 'tussen', 'eind'];

@@ -42,6 +42,14 @@
 <tr><td>SF Start–Finish</td><td>start A → einde B</td><td>B mag pas eindigen als A gestart is</td></tr>
 </table>
 <p>Laat je los op het blok zelf in plaats van op een poort, dan wordt het de startpoort. Dubbelklik op een pijl om type, tijdsverschil en lus aan te passen. Een positief tijdsverschil is wachttijd, een negatief tijdsverschil is overlap. De relaties leggen een <em>vroegst</em> toegestaan moment vast: B mag ook later.</p>
+<p>Zo zie je de relaties op het canvas:</p>
+<ul>
+<li><strong>FS</strong> loopt van de eindpoort van A (rechts) naar de startpoort van B (links).</li>
+<li><strong>SS</strong> vertrekt aan de onder- of bovenrand van A bij de <em>linker</em>hoek en komt binnen in de linker bovenhoek (of onderhoek) van B.</li>
+<li><strong>FF</strong> vertrekt bij de <em>rechter</em>hoek van A en komt binnen in de rechterhoek van B.</li>
+<li><strong>SF</strong> vertrekt links op A en komt rechts op B binnen.</li>
+</ul>
+<p>De rand van A werkt als tijdlijn: bij <em>SS +2</em> vertrekt de pijl op dag 2 van A, bij <em>FF −2</em> twee dagen vóór de rechterhoek. Selecteer je de relatie, dan staan er dagstreepjes op die rand. Staat B lager dan A, dan gaat de pijl via de onderrand; staat B hoger, via de bovenrand; staan ze naast elkaar, dan loopt hij over de bovenkant.</p>
 
 <h3>Gebeurtenissen en triggers</h3>
 <p>Een gebeurtenis is een moment zonder doorlooptijd, zoals een opdracht, een wetswijziging of een besluit van het CvB. Je maakt er een met <em>+ Gebeurtenis</em> (toets <kbd>G</kbd>) en kiest rechts de soort:</p>

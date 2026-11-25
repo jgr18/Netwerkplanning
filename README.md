@@ -40,6 +40,13 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 
 ## Wijzigingen per versie
 
+### v0.42 (25-11-2026)
+- SS-, FF- en SF-relaties worden anders getekend. Ze lopen niet meer eerst terug vanuit de poort, maar vertrekken aan de onder- of bovenrand van A: SS bij de linkerhoek, FF bij de rechterhoek. Ze komen binnen in de linker- (start) of rechter- (einde) hoek van B. FS blijft van poort naar poort.
+- Het tijdsverschil is te zien aan het vertrekpunt: de rand van A werkt als tijdlijn (SS +2 vertrekt op dag 2 van A, FF −2 twee dagen vóór de rechterhoek). Een stipje markeert het vertrekpunt; het label staat er direct naast.
+- Bij een geselecteerde SS/FF/SF-relatie staan dagstreepjes op de rand van A.
+- Onderrand of bovenrand hangt af van de ligging: B lager → onderrand van A naar bovenrand van B; B hoger → andersom; naast elkaar → over de bovenkant.
+
+
 ### v0.41 (16-11-2026)
 - Status kies je nu uit een vaste keuzelijst (Concept, Ter review, Voorlopig, Definitief, Gewijzigd). Alle keuzes blijven altijd zichtbaar; je hoeft de oude status niet eerst weg te halen. Een eigen status uit een eerder bestand blijft in de lijst staan.
 

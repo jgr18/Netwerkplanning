@@ -85,7 +85,38 @@
       const ym = Math.min(cy - ER, B.y) - 30;
       return schoon([{ x: cx, y: cy - ER }, { x: cx, y: ym }, { x: tx, y: ym }, { x: tx, y: B.y }]);
     }
+    if (!NP.isGebeurtenis(A) && !NP.isGebeurtenis(B) && r.type !== 'FS') return NP.routeHoek(A, B, r).pts;
     return NP.route(A, B, r.type);
+  };
+
+  /* SS, FF en SF: vertrek aan de boven- of onderrand van A (start = linkerhoek, einde = rechterhoek),
+     verschoven met het tijdsverschil; aankomst in de hoek van B (start = links, einde = rechts). */
+  const HOEK = 10;
+  NP.routeHoek = function (A, B, r) {
+    const D = Math.max(0, Number(A.duur) || 0);
+    const v = Number(r.verschil) || 0;
+    const bruikbaar = W - 2 * HOEK;
+    const vanStart = r.type[0] === 'S';
+    let frac;
+    if (vanStart) frac = D > 0 ? Math.min(1, Math.max(0, v / D)) : 0;
+    else frac = D > 0 ? 1 - Math.min(1, Math.max(0, -v / D)) : 1;
+    const ax = A.x + HOEK + frac * bruikbaar;
+    const bx = r.type[1] === 'S' ? B.x + HOEK : B.x + W - HOEK;
+    let rand, pts;
+    if (B.y >= A.y + H + 30) {
+      rand = 'onder';
+      const ym = (A.y + H + B.y) / 2;
+      pts = [{ x: ax, y: A.y + H }, { x: ax, y: ym }, { x: bx, y: ym }, { x: bx, y: B.y }];
+    } else if (B.y + H + 30 <= A.y) {
+      rand = 'boven';
+      const ym = (B.y + H + A.y) / 2;
+      pts = [{ x: ax, y: A.y }, { x: ax, y: ym }, { x: bx, y: ym }, { x: bx, y: B.y + H }];
+    } else {
+      rand = 'boven';
+      const ym = Math.min(A.y, B.y) - 28;
+      pts = [{ x: ax, y: A.y }, { x: ax, y: ym }, { x: bx, y: ym }, { x: bx, y: B.y }];
+    }
+    return { pts: schoon(pts), rand, ax, frac, D };
   };
 
   NP.route = function (A, B, type) {
@@ -155,6 +186,21 @@
       out += `<g class="rel" data-rel="${esc(r.id)}">`;
       if (opts.scherm) out += `<path d="${d}" stroke="transparent" stroke-width="14" fill="none" class="rel-hit"/>`;
       out += `<path d="${d}" stroke="${kleur}" stroke-width="${dikte}" fill="none"${streep} stroke-linejoin="round" marker-end="url(#${marker})"/>`;
+      if (!trigger && r.type !== 'FS' && !NP.isGebeurtenis(A) && !NP.isGebeurtenis(B)) out += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="3" fill="${kleur}"/>`;
+      if (gekozen && !trigger && r.type !== 'FS' && !NP.isGebeurtenis(A) && !NP.isGebeurtenis(B)) {
+        // dagstreepjes op de rand van A waar de pijl vertrekt
+        const h = NP.routeHoek(A, B, r);
+        const yr = h.rand === 'onder' ? A.y + H : A.y;
+        const dir = h.rand === 'onder' ? -1 : 1;
+        if (h.D > 0 && h.D <= 60) {
+          const stap = h.D > 30 ? 5 : 1;
+          for (let i = stap; i < h.D; i += stap) {
+            const x = A.x + HOEK + (i / h.D) * (W - 2 * HOEK);
+            out += `<line x1="${x}" y1="${yr}" x2="${x}" y2="${yr + dir * 7}" stroke="#1D4ED8" stroke-width="1.2"/>`;
+          }
+        }
+        out += `<circle cx="${h.ax}" cy="${yr}" r="3.5" fill="#1D4ED8"/>`;
+      }
       // pijltje halverwege het langste stuk, zodat de richting overal zichtbaar is
       const seg = langsteSegment(pts);
       if (seg.l > 70) {
@@ -176,9 +222,16 @@
       const tekst = delen.join(' · ');
       if (tekst) {
         const opTop = trigger && r.aangrijp === 'tijdens';
-        const lp = opTop ? { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y - 13 } : { x: (seg.a.x + seg.b.x) / 2, y: (seg.a.y + seg.b.y) / 2 };
+        const hoekRel = !trigger && r.type !== 'FS' && !NP.isGebeurtenis(A) && !NP.isGebeurtenis(B);
         const bw = breedte(tekst, '600 11px ' + NP.FONT) + 12;
-        const ly = opTop ? lp.y : (seg.l > 70 && Math.abs(seg.a.y - seg.b.y) < 1 ? lp.y - 15 : lp.y);
+        let lp = opTop ? { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y - 13 } : { x: (seg.a.x + seg.b.x) / 2, y: (seg.a.y + seg.b.y) / 2 };
+        let ly = opTop ? lp.y : (seg.l > 70 && Math.abs(seg.a.y - seg.b.y) < 1 ? lp.y - 15 : lp.y);
+        if (hoekRel) {
+          // label naast het eerste (verticale) stukje, vlak bij het vertrekpunt
+          const p0 = pts[0], p1 = pts[1] || pts[0];
+          lp = { x: p0.x + bw / 2 + 6, y: (p0.y + p1.y) / 2 };
+          ly = lp.y;
+        }
         out += `<rect x="${lp.x - bw / 2}" y="${ly - 10}" width="${bw}" height="20" rx="4" fill="#FFFFFF" stroke="${r.lus ? k.lus : '#D4D4D0'}"${r.lus ? ' stroke-dasharray="3 2"' : ''}/>`;
         out += `<text x="${lp.x}" y="${ly + 4}" text-anchor="middle" font-size="11" font-weight="600" fill="${r.lus ? k.lus : trigger ? k.trigger : k.tekst}" font-family='${NP.FONT}'>${esc(tekst)}</text>`;
       }
