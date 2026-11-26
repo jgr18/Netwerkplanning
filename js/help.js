@@ -2,10 +2,42 @@
 (function () {
   'use strict';
   const NP = (window.NP = window.NP || {});
+  /* Voorbeeldnetwerk dat in de helpfunctie wordt getoond */
+  NP.voorbeeldProject = function () {
+    const A = (id, naam, rol, duur, x, y) => ({ id, soort: 'activiteit', naam, rol, duur, nietVoor: null, notitie: '', x, y });
+    const R = (id, van, naar, type, verschil) => ({ id, van, naar, type, verschil, lus: false, aangrijp: 'begin', na: 0, naEenheid: 'dagen' });
+    return {
+      naam: 'Voorbeeld onderwijsprogramma', eenheid: 'werkdagen', docDatum: '', docVersie: '', status: '',
+      activiteiten: [
+        A('A1', 'Aanleveren onderwijsgegevens door academie', 'Teamleider onderwijs', 0, 0, 0),
+        A('A2', "Verwerken export in onderwijsprogramma's", 'Planner', 10, 320, 0),
+        A('A3', 'Onderwijsprogramma controleren', 'Moduleverantwoordelijke', 5, 640, 0),
+        A('A4', 'Verwerken van opmerkingen', 'Planner', 5, 960, 0),
+        A('A5', 'Definitief opleveren', 'Teamleider', 0, 1280, 0),
+        A('A6', 'Analyseren van onderwijs en faciliteiten', 'Planner', 5, 800, 360),
+        { id: 'G1', soort: 'tussen', naam: 'Besluit CvB over faciliteiten', rol: '', duur: 0, nietVoor: 8, notitie: '', x: 520, y: 150 }
+      ],
+      relaties: [R('R1', 'A1', 'A2', 'FS', 0), R('R2', 'A2', 'A3', 'FS', 0), R('R3', 'A2', 'A6', 'FS', 0), R('R4', 'A3', 'A4', 'FS', 0), R('R5', 'A6', 'A4', 'FF', 2), R('R6', 'A4', 'A5', 'FS', 0),
+        Object.assign(R('R7', 'G1', 'A6', 'FS', 0), { aangrijp: 'tijdens', na: 2 })]
+    };
+  };
+
   NP.helpHtml = function () {
     return `
 <h2>Netwerkplanner v${NP.VERSIE} – uitleg</h2>
 <p>Met de Netwerkplanner teken je een netwerkplanning: activiteiten als blokken, verbonden met relaties. De tool rekent zelf de vroegste en laatste tijden, de speling en het kritieke pad uit. Alles blijft in je eigen browser; opslaan gaat naar een Excel-bestand dat je zelf bewaart.</p>
+
+<h3>Voorbeeld</h3>
+<p>Een kleine planning voor het onderwijsprogramma. Je ziet er de belangrijkste onderdelen in terug:</p>
+<ul>
+<li>Rode koppen en pijlen vormen het <strong>kritieke pad</strong> (totale speling 0).</li>
+<li><em>Aanleveren</em> en <em>Definitief opleveren</em> duren 0 dagen. Het zijn mijlpalen, met een gestippelde rand.</li>
+<li><em>Analyseren</em> heeft 3 dagen speling.</li>
+<li>Die activiteit is met een <strong>FF +2</strong>-relatie aan <em>Verwerken van opmerkingen</em> gekoppeld. De pijl vertrekt bij de rechterhoek.</li>
+<li>Het <strong>besluit van het CvB</strong> is een tussentijdse gebeurtenis (niet vóór dag 8). Ze grijpt aan op dag 2 van <em>Analyseren</em> en mag tot uiterlijk dag 15 vallen.</li>
+</ul>
+<div class="helpvoorbeeld" id="helpVoorbeeld"></div>
+<p class="klein">Dit voorbeeld staat alleen hier in de helpfunctie; je eigen planning verandert er niet door.</p>
 
 <h3>Het activiteitenblok</h3>
 <table>

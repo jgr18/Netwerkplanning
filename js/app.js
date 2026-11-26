@@ -552,27 +552,6 @@
     autosave(); zetView(); teken();
   }
 
-  function voorbeeld() {
-    const A = (id, naam, rol, duur, x, y) => ({ id, soort: 'activiteit', naam, rol, duur, nietVoor: null, notitie: '', x, y });
-    const R = (id, van, naar, type, verschil, lus) => ({ id, van, naar, type, verschil, lus: !!lus, aangrijp: 'begin', na: 0, naEenheid: 'dagen' });
-    bewaarStap();
-    S.p = {
-      naam: 'Voorbeeld onderwijsprogramma', eenheid: 'werkdagen', docDatum: new Date().toISOString().slice(0, 10), docVersie: '0.1', status: 'Concept',
-      activiteiten: [
-        A('A1', 'Aanleveren onderwijsgegevens door academie', 'Teamleider onderwijs', 0, 0, 0),
-        A('A2', "Verwerken export in onderwijsprogramma's", 'Planner', 10, 320, 0),
-        A('A3', 'Onderwijsprogramma controleren', 'Moduleverantwoordelijke', 5, 640, 0),
-        A('A4', 'Verwerken van opmerkingen', 'Planner', 5, 960, 0),
-        A('A5', 'Definitief opleveren', 'Teamleider', 0, 1280, 0),
-        A('A6', 'Analyseren van onderwijs en faciliteiten', 'Planner', 5, 800, 360),
-        { id: 'G1', soort: 'tussen', naam: 'Besluit CvB over faciliteiten', rol: '', duur: 0, nietVoor: 8, notitie: '', x: 760, y: 150 }
-      ],
-      relaties: [R('R1', 'A1', 'A2', 'FS', 0), R('R2', 'A2', 'A3', 'FS', 0), R('R3', 'A2', 'A6', 'FS', 0), R('R4', 'A3', 'A4', 'FS', 0), R('R5', 'A6', 'A4', 'FF', 2), R('R6', 'A4', 'A5', 'FS', 0), Object.assign(R('R7', 'G1', 'A6', 'FS', 0), { aangrijp: 'tijdens', na: 2 })]
-    };
-    S.sel.clear(); S.selRel = null;
-    gewijzigd();
-    passend();
-  }
 
   /* ---------- relatievenster ---------- */
   let dlgRelId = null;
@@ -1107,9 +1086,23 @@
   $('btnRedo').onclick = opnieuw;
   $('btnIn').onclick = () => zoomOm(1.2);
   $('btnUit').onclick = () => zoomOm(1 / 1.2);
-  $('btnVoorbeeld').onclick = voorbeeld;
   $('chkKritiek').onchange = teken;
-  $('btnHelp').onclick = () => { $('helpInhoud').innerHTML = NP.helpHtml(); $('dlgHelp').showModal(); };
+  $('btnHelp').onclick = () => {
+    $('helpInhoud').innerHTML = NP.helpHtml();
+    tekenHelpVoorbeeld();
+    $('dlgHelp').showModal();
+    $('helpInhoud').scrollTop = 0;
+  };
+  /* Het voorbeeld staat alleen in de helpfunctie, los van je eigen planning */
+  function tekenHelpVoorbeeld() {
+    const doel = $('helpVoorbeeld');
+    if (!doel) return;
+    const p = NP.normaliseer(NP.voorbeeldProject());
+    const reken = NP.bereken(p);
+    const bb = NP.omhullende(p);
+    const tk = { reken, scherm: false };
+    doel.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bb.x} ${bb.y} ${bb.w} ${bb.h}" role="img" aria-label="Voorbeeld van een netwerkplanning">${NP.defs(NP.kleuren(false))}${NP.tekenRelaties(p, tk)}${NP.tekenKnopen(p, tk)}</svg>`;
+  }
   $('bestandInvoer').onchange = e => { const f = e.target.files[0]; if (f) leesBestand(f, null); };
 
   document.querySelectorAll('#relTypes input, #relAangrijp input').forEach(i => i.addEventListener('change', relUitleg));

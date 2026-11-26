@@ -40,6 +40,11 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 
 ## Wijzigingen per versie
 
+### v0.43 (26-11-2026)
+- Het voorbeeld is van het lege canvas verhuisd naar de helpfunctie. Daar staat het als afbeelding met uitleg (kritiek pad, mijlpalen, FF-relatie, gebeurtenis). Openen van het voorbeeld maakt dus geen nieuw project meer aan en verandert je eigen planning niet.
+- Op een leeg canvas staat nu een verwijzing naar *Help* in plaats van de knop *Voorbeeld laden*.
+
+
 ### v0.42 (25-11-2026)
 - SS-, FF- en SF-relaties worden anders getekend. Ze lopen niet meer eerst terug vanuit de poort, maar vertrekken aan de onder- of bovenrand van A: SS bij de linkerhoek, FF bij de rechterhoek. Ze komen binnen in de linker- (start) of rechter- (einde) hoek van B. FS blijft van poort naar poort.
 - Het tijdsverschil is te zien aan het vertrekpunt: de rand van A werkt als tijdlijn (SS +2 vertrekt op dag 2 van A, FF −2 twee dagen vóór de rechterhoek). Een stipje markeert het vertrekpunt; het label staat er direct naast.
@@ -147,7 +152,7 @@ Bij openen leest de tool alleen de invoerkolommen; de rekenkolommen worden opnie
 
 **Overig**
 - Helpfunctie met uitleg, sneltoetsen, rekenregels, Excel-indeling en afdrukken.
-- Voorbeeldproject (knop *Voorbeeld laden* op een leeg canvas).
+- Voorbeeldproject (knop *Voorbeeld laden* op een leeg canvas; vanaf v0.43 in de helpfunctie).
 
 ### Nog niet gebouwd (ideeën voor later)
 - Hulplijnen tijdens slepen.
